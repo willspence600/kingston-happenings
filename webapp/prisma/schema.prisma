@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         String   @default("user") // user, organizer, admin
+  venueName    String?
+  isTrusted    Boolean  @default(false) // Trusted organizers can submit without approval
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  submittedEvents Event[] @relation("SubmittedBy")
+  likes           Like[]
+}
+
+model Venue {
+  id           String   @id @default(cuid())
+  name         String
+  address      String
+  neighborhood String?
+  website      String?
+  imageUrl     String?
+  status       String   @default("approved") // pending, approved, rejected
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  events Event[]
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  date        String   // YYYY-MM-DD format
+  startTime   String   // HH:MM format
+  endTime     String?
+  price       String?
+  ticketUrl   String?
+  imageUrl    String?
+  featured    Boolean  @default(false)
+  status      String   @default("pending") // pending, approved, rejected, cancelled
+  
+  // Recurrence fields
+  isRecurring       Boolean @default(false)
+  recurrencePattern String? // weekly, biweekly, monthly
+  recurrenceDay     Int?    // 0-6 for day of week (0=Sunday)
+  recurrenceEndDate String? // YYYY-MM-DD format
+  parentEventId     String? // Links recurring instances to parent
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  venueId     String
+  submittedBy User?    @relation("SubmittedBy", fields: [submittedById], references: [id])
+  submittedById String?
+  categories  EventCategory[]
+  likes       Like[]
+}
+
+model EventCategory {
+  id       String @id @default(cuid())
+  name     String // concert, food-deal, trivia, etc.
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId  String
+
+  @@unique([eventId, name])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  @@unique([userId, eventId])
+}
