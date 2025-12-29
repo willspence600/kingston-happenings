@@ -1,0 +1,107 @@
+{
+  "scraped_at": "2025-12-15T21:30:06.088749",
+  "event_count": 6,
+  "events": [
+    {
+      "title": "Kingston Symphony: Winter Concert",
+      "description": "An evening of classical music featuring works by Tchaikovsky and Beethoven.",
+      "date": "2025-12-22",
+      "start_time": "19:30",
+      "end_time": "21:30",
+      "venue_name": "The Grand Theatre",
+      "venue_address": "218 Princess St, Kingston, ON",
+      "categories": [
+        "concert",
+        "theatre"
+      ],
+      "price": "$35-75",
+      "source_url": "https://kingstongrand.ca/events/symphony-winter",
+      "image_url": null,
+      "ticket_url": "https://kingstongrand.ca/tickets/symphony-winter"
+    },
+    {
+      "title": "Kingston Frontenacs vs Oshawa Generals",
+      "description": "OHL hockey action as the Frontenacs take on the Generals.",
+      "date": "2025-12-18",
+      "start_time": "19:00",
+      "end_time": "22:00",
+      "venue_name": "Leon's Centre",
+      "venue_address": "1 The Tragically Hip Way, Kingston, ON",
+      "categories": [
+        "sports",
+        "family"
+      ],
+      "price": "$18-45",
+      "source_url": "https://leonscentre.com/events/frontenacs",
+      "image_url": null,
+      "ticket_url": "https://leonscentre.com/tickets/frontenacs"
+    },
+    {
+      "title": "Kingston Christmas Market",
+      "description": "Annual holiday market featuring local artisans, food vendors, and live entertainment.",
+      "date": "2025-12-20",
+      "start_time": "10:00",
+      "end_time": "17:00",
+      "venue_name": "Market Square",
+      "venue_address": "216 Ontario St, Kingston, ON",
+      "categories": [
+        "market",
+        "festival",
+        "family"
+      ],
+      "price": "Free Admission",
+      "source_url": "https://www.visitkingston.ca/events/christmas-market",
+      "image_url": null,
+      "ticket_url": null
+    },
+    {
+      "title": "Trivia Night at The Ale House",
+      "description": "Weekly trivia night! Teams of up to 6. Prizes for top 3 teams.",
+      "date": "2025-12-17",
+      "start_time": "19:00",
+      "end_time": "22:00",
+      "venue_name": "The Ale House",
+      "venue_address": "393 Princess St, Kingston, ON",
+      "categories": [
+        "trivia"
+      ],
+      "price": "Free",
+      "source_url": "https://alehousekingston.com/events",
+      "image_url": null,
+      "ticket_url": null
+    },
+    {
+      "title": "Half-Price Wings Wednesday",
+      "description": "All wings half price every Wednesday! Over 20 sauces available.",
+      "date": "2025-12-17",
+      "start_time": "11:00",
+      "end_time": "23:00",
+      "venue_name": "The Toucan",
+      "venue_address": "76 Princess St, Kingston, ON",
+      "categories": [
+        "food-deal"
+      ],
+      "price": "Half-Price Wings",
+      "source_url": "https://toucankingston.com",
+      "image_url": null,
+      "ticket_url": null
+    },
+    {
+      "title": "Open Mic Night",
+      "description": "Bring your guitar, voice, or poetry! Sign-up starts at 7pm.",
+      "date": "2025-12-18",
+      "start_time": "20:00",
+      "end_time": "23:30",
+      "venue_name": "Kingston Brewing Company",
+      "venue_address": "34 Clarence St, Kingston, ON",
+      "categories": [
+        "concert",
+        "nightlife"
+      ],
+      "price": "Free",
+      "source_url": "https://kingstonbrewing.ca/events",
+      "image_url": null,
+      "ticket_url": null
+    }
+  ]
+}
