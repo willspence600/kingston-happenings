@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Heart, Users, MapPin, Calendar, Mail, ArrowRight } from 'lucide-react';
+import { Heart, Users, MapPin, Calendar, Mail, ArrowRight, Star } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -15,8 +15,7 @@ export default function AboutPage() {
             About <span className="italic text-accent">Kingston Happenings</span>
           </h1>
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Your comprehensive guide to events, entertainment, and everything happening 
-            in the Limestone City.
+            Your comprehensive page to view everything happening in Kingston.
           </p>
         </div>
       </section>
@@ -54,17 +53,17 @@ export default function AboutPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card border border-border rounded-2xl p-6 text-center">
                 <Calendar size={32} className="text-primary mx-auto mb-3" />
-                <p className="text-3xl font-display text-foreground mb-1">500+</p>
+                <p className="text-3xl font-display text-foreground mb-1">X</p>
                 <p className="text-sm text-muted-foreground">Events Listed</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-6 text-center">
                 <MapPin size={32} className="text-primary mx-auto mb-3" />
-                <p className="text-3xl font-display text-foreground mb-1">100+</p>
+                <p className="text-3xl font-display text-foreground mb-1">X</p>
                 <p className="text-sm text-muted-foreground">Local Venues</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-6 text-center">
                 <Users size={32} className="text-primary mx-auto mb-3" />
-                <p className="text-3xl font-display text-foreground mb-1">10K+</p>
+                <p className="text-3xl font-display text-foreground mb-1">X</p>
                 <p className="text-sm text-muted-foreground">Monthly Visitors</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-6 text-center">
@@ -89,44 +88,57 @@ export default function AboutPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-card border border-border rounded-2xl p-8">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                <Calendar size={24} className="text-primary" />
-              </div>
-              <h3 className="font-display text-xl text-foreground mb-2">
-                Comprehensive Listings
-              </h3>
-              <p className="text-muted-foreground">
-                From concerts and theatre to food deals and trivia nights, we cover 
-                every type of event happening in Kingston.
-              </p>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-8">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                <MapPin size={24} className="text-primary" />
-              </div>
-              <h3 className="font-display text-xl text-foreground mb-2">
-                Venue Directory
-              </h3>
-              <p className="text-muted-foreground">
-                Discover Kingston&apos;s best venues, from historic theatres to cozy 
-                neighborhood pubs, all with upcoming events.
-              </p>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             <div className="bg-card border border-border rounded-2xl p-8">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                 <Users size={24} className="text-primary" />
               </div>
-              <h3 className="font-display text-xl text-foreground mb-2">
+              <h3 className="font-display text-xl text-foreground mb-3">
+                For Users
+              </h3>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                Discover everything happening in Kingston with our comprehensive event listings.
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Comprehensive listings of all events and food & drink specials</span>
+                </li>
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Custom area to save your favorite events</span>
+                </li>
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Get notified about events you pick</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-8">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                <Calendar size={24} className="text-primary" />
+              </div>
+              <h3 className="font-display text-xl text-foreground mb-3">
                 For Organizers
               </h3>
-              <p className="text-muted-foreground">
-                Easy event submission for venues, restaurants, and organizers. 
-                Reach thousands of Kingston event-goers.
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                We make it easier than ever to showcase all of your venue&apos;s events and specials.
               </p>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Easy event and special submission process</span>
+                </li>
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Put all your venue&apos;s events and specials in one place</span>
+                </li>
+                <li className="flex items-start gap-2 text-muted-foreground">
+                  <Star size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                  <span>Reach everyone in Kingston on a website they all have access to</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>

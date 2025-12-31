@@ -9,7 +9,7 @@
   --card-foreground: #1A1614;
   --primary: #C45D35;
   --primary-foreground: #FFFFFF;
-  --secondary: #2D4A3E;
+  --secondary: #1A3329;
   --secondary-foreground: #FFFFFF;
   --muted: #F0EDE8;
   --muted-foreground: #6B6560;
@@ -27,7 +27,7 @@
     --card-foreground: #FAF8F5;
     --primary: #E07B54;
     --primary-foreground: #0F0E0D;
-    --secondary: #4A7A6A;
+    --secondary: #2D4A3E;
     --secondary-foreground: #FAF8F5;
     --muted: #262422;
     --muted-foreground: #9B9590;
@@ -201,4 +201,10 @@ button {
     radial-gradient(circle at 25px 25px, var(--border) 2%, transparent 0%),
     radial-gradient(circle at 75px 75px, var(--border) 2%, transparent 0%);
   background-size: 100px 100px;
+}
+
+/* Break inside avoid for masonry layouts */
+.break-inside-avoid {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }

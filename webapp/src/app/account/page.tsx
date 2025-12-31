@@ -188,9 +188,12 @@ export default function AccountPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  disabled
+                  className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-muted-foreground cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Email changes are not supported. Contact support if needed.
+                </p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button

@@ -1,82 +1,55 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
-import prisma from './prisma';
+import { createSupabaseServerClient } from './supabaseServer';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'kingston-happenings-super-secret-key-change-in-production';
-const TOKEN_NAME = 'kh_token';
-
-export interface JWTPayload {
-  userId: string;
+export interface AuthUser {
+  id: string;
   email: string;
-  role: string;
+  name: string;
+  role: 'user' | 'organizer' | 'admin';
+  venueName?: string;
+  createdAt: string;
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+interface Profile {
+  id: string;
+  role: 'user' | 'organizer' | 'admin';
+  name: string | null;
+  venue_name: string | null;
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
-}
-
-export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-}
-
-export function verifyToken(token: string): JWTPayload | null {
+export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch {
+    const supabase = await createSupabaseServerClient();
+    
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      return null;
+    }
+
+    // Fetch role from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role, name, venue_name')
+      .eq('id', user.id)
+      .single();
+
+    const metadata = user.user_metadata || {};
+    
+    return {
+      id: user.id,
+      email: user.email || '',
+      name: profile?.name || metadata.name || metadata.full_name || user.email?.split('@')[0] || 'User',
+      role: (profile?.role as AuthUser['role']) || 'user', // Role from profiles table
+      venueName: profile?.venue_name || metadata.venueName,
+      createdAt: user.created_at,
+    };
+  } catch (error) {
+    console.error('Error getting current user:', error);
     return null;
   }
 }
 
-export async function setAuthCookie(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set(TOKEN_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  });
-}
-
-export async function clearAuthCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete(TOKEN_NAME);
-}
-
-export async function getAuthToken(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(TOKEN_NAME);
-  return token?.value || null;
-}
-
-export async function getCurrentUser() {
-  const token = await getAuthToken();
-  if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      venueName: true,
-      createdAt: true,
-    },
-  });
-
-  return user;
-}
-
-export async function requireAuth() {
+export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) {
     throw new Error('Unauthorized');
@@ -84,7 +57,7 @@ export async function requireAuth() {
   return user;
 }
 
-export async function requireAdmin() {
+export async function requireAdmin(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user || user.role !== 'admin') {
     throw new Error('Forbidden');

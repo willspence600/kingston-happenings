@@ -30,7 +30,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       venues: venues.map((v) => ({
-        ...v,
+        id: v.id,
+        name: v.name,
+        address: v.address,
+        neighborhood: v.neighborhood,
+        website: v.website,
+        imageUrl: v.imageUrl,
+        status: v.status,
+        promotionTier: v.promotionTier || 'standard',
         eventCount: v._count.events,
       })),
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, user } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,8 +19,14 @@ export default function LoginPage() {
   });
 
   // Redirect if already logged in
-  if (user) {
-    router.push('/');
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/');
+    }
+  }, [user, authLoading, router]);
+
+  // Show nothing while checking auth or if already logged in
+  if (authLoading || user) {
     return null;
   }
 
@@ -71,12 +77,12 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Demo Account Info */}
+          {/* Admin Account Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <p className="text-sm text-blue-700 font-medium mb-1">Demo Admin Account</p>
+            <p className="text-sm text-blue-700 font-medium mb-1">Admin Access</p>
             <p className="text-sm text-blue-600">
-              Email: admin@kingstonhappenings.ca<br />
-              Password: admin123
+              Admin account: admin@kingstonhappenings.ca<br />
+              <span className="text-xs">(Contact administrator for access)</span>
             </p>
           </div>
 

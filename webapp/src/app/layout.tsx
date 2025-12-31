@@ -7,8 +7,8 @@ import { EventsProvider } from "@/contexts/EventsContext";
 
 export const metadata: Metadata = {
   title: "Kingston Happenings | Events in Kingston, Ontario",
-  description: "Discover concerts, food deals, trivia nights, and all the best events happening in Kingston, Ontario. Your guide to the Limestone City.",
-  keywords: ["Kingston", "Ontario", "events", "concerts", "food deals", "trivia", "festivals", "things to do"],
+  description: "Discover concerts, food specials, trivia nights, and all the best events happening in Kingston, Ontario. Your guide to the Limestone City.",
+  keywords: ["Kingston", "Ontario", "events", "concerts", "food specials", "trivia", "festivals", "things to do"],
 };
 
 export default function RootLayout({

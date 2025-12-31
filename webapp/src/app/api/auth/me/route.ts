@@ -4,12 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ user: null });
-    }
-
-    return NextResponse.json({ user });
+    return NextResponse.json({ user: user || null });
   } catch (error) {
     console.error('Get current user error:', error);
     return NextResponse.json({ user: null });

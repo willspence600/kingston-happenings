@@ -10,7 +10,7 @@ import { useEvents } from '@/contexts/EventsContext';
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/events', label: 'Browse Events', icon: Search },
+  { href: '/events', label: 'Browse', icon: Search },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/venues', label: 'Venues', icon: MapPin },
   { href: '/my-events', label: 'My Events', icon: Heart },

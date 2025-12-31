@@ -240,20 +240,56 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper function to get promotion tier priority
+  const getPromotionTierPriority = (tier?: string): number => {
+    switch (tier) {
+      case 'featured': return 3;
+      case 'promoted': return 2;
+      case 'standard': return 1;
+      default: return 1;
+    }
+  };
+
   // Query functions
   const getEventById = (id: string) => events.find(e => e.id === id);
   
-  const getEventsByDate = (date: string) => events.filter(e => e.date === date);
+  const getEventsByDate = (date: string) => {
+    const eventsForDate = events.filter(e => e.date === date);
+    return eventsForDate.sort((a, b) => {
+      const aPriority = getPromotionTierPriority(a.venue?.promotionTier);
+      const bPriority = getPromotionTierPriority(b.venue?.promotionTier);
+      if (bPriority !== aPriority) {
+        return bPriority - aPriority; // Higher priority first
+      }
+      return a.startTime.localeCompare(b.startTime);
+    });
+  };
   
   const getTodaysEvents = () => getEventsByDate(format(new Date(), 'yyyy-MM-dd'));
   
-  const getFeaturedEvents = () => 
-    events.filter(e => e.featured && e.date >= format(new Date(), 'yyyy-MM-dd'));
+  const getFeaturedEvents = () => {
+    const featured = events.filter(e => e.featured && e.date >= format(new Date(), 'yyyy-MM-dd'));
+    return featured.sort((a, b) => {
+      const aPriority = getPromotionTierPriority(a.venue?.promotionTier);
+      const bPriority = getPromotionTierPriority(b.venue?.promotionTier);
+      if (bPriority !== aPriority) {
+        return bPriority - aPriority; // Higher priority first
+      }
+      return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime);
+    });
+  };
   
   const getUpcomingEvents = (limit?: number) => {
     const upcoming = events
       .filter(e => e.date >= format(new Date(), 'yyyy-MM-dd'))
-      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      .sort((a, b) => {
+        const aPriority = getPromotionTierPriority(a.venue?.promotionTier);
+        const bPriority = getPromotionTierPriority(b.venue?.promotionTier);
+        if (bPriority !== aPriority) {
+          return bPriority - aPriority; // Higher priority first
+        }
+        return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime);
+      });
     return limit ? upcoming.slice(0, limit) : upcoming;
   };
   

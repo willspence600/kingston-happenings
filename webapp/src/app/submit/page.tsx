@@ -27,8 +27,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/contexts/EventsContext';
 
 const allCategories: EventCategory[] = [
-  'concert', 'food-deal', 'trivia', 'theatre', 'sports',
-  'festival', 'market', 'workshop', 'nightlife', 'family', 'community', '19plus', 'activity'
+  'live-music', 'activity-nights', 'daytime', 'sports', 'all-day',
+  '19plus', 'workshop', 'concert', 'theatre', 'market', 'nightlife',
+  'food-deal', 'trivia', 'festival', 'family', 'community'
 ];
 
 // Generate a unique ID (compatible with older browsers)

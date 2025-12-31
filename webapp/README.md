@@ -1,6 +1,6 @@
 # Kingston Happenings Web App
 
-A modern event discovery platform for Kingston, Ontario. Find concerts, food deals, trivia nights, and everything happening in the Limestone City.
+A modern event discovery platform for Kingston, Ontario. Find concerts, food specials, trivia nights, and everything happening in the Limestone City.
 
 ## Features
 
@@ -9,13 +9,15 @@ A modern event discovery platform for Kingston, Ontario. Find concerts, food dea
 - **Calendar View** - Monthly calendar with event indicators
 - **Venue Directory** - Explore Kingston's venues and their events
 - **Submit Events** - Form for organizers to submit new events
-- **User Authentication** - Login/Register UI (ready for backend integration)
+- **User Authentication** - Sign up/sign in with Supabase Auth
 
 ## Tech Stack
 
 - **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS with custom theme
+- **Authentication**: Supabase Auth
+- **Database**: SQLite (Prisma) for events/venues, Supabase Postgres for user profiles
 - **Fonts**: DM Serif Display + Outfit
 - **Icons**: Lucide React
 - **Animations**: Framer Motion
@@ -23,21 +25,108 @@ A modern event discovery platform for Kingston, Ontario. Find concerts, food dea
 
 ## Getting Started
 
+### 1. Install Dependencies
+
 ```bash
-# Install dependencies
 npm install
+```
 
-# Run development server
+### 2. Set Up Supabase
+
+1. Create a free account at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Go to **Settings > API** in your Supabase dashboard
+4. Copy your **Project URL** and **anon/public key**
+
+### 3. Create the Profiles Table
+
+The app stores user roles in a `profiles` table. Run the SQL setup script:
+
+1. Go to **SQL Editor** in your Supabase dashboard
+2. Click **New Query**
+3. Copy and paste the contents of `supabase-setup.sql` (in the webapp folder)
+4. Click **Run**
+
+This creates:
+- A `profiles` table with `id`, `role`, `name`, `venue_name` columns
+- RLS policies so users can only access their own profile
+- A trigger to auto-create profiles when users sign up
+
+### 4. Configure Environment Variables
+
+Create a `.env.local` file in the `webapp/` directory:
+
+```env
+# Supabase Configuration (Required)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Database (Prisma - for events/venues)
+DATABASE_URL="file:./dev.db"
+```
+
+### 5. Set Up Local Database
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate dev
+
+# (Optional) Seed with sample data
+npm run db:seed
+```
+
+### 6. Run Development Server
+
+```bash
 npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## User Roles
+
+The app supports three user roles:
+
+| Role | Description | Capabilities |
+|------|-------------|--------------|
+| **Event-Goer** (`user`) | Regular users | Browse events, save favorites |
+| **Organizer** (`organizer`) | Event organizers | Submit events, manage their submissions |
+| **Admin** (`admin`) | Platform administrators | Approve/reject events, manage all content |
+
+### Setting Yourself as Admin
+
+After signing up, you can promote yourself to admin via the Supabase dashboard:
+
+1. Go to your Supabase project dashboard
+2. Navigate to **Table Editor** → **profiles**
+3. Find your row (look for your name or user ID)
+4. Click on the row to edit it
+5. Change the `role` column from `user` or `organizer` to `admin`
+6. Press Enter or click outside to save
+
+**That's it!** Refresh the app and you'll have admin access.
+
+> **Note**: Normal users cannot change their own role through the app - this can only be done via the Supabase dashboard, which is protected by your Supabase credentials.
+
+### Creating the Admin Account (Alternative)
+
+If you prefer to create a dedicated admin account:
+
+1. Register a new account in the app (e.g., `admin@kingstonhappenings.ca`)
+2. Go to Supabase **Table Editor** → **profiles**
+3. Find the new user's row and set `role` to `admin`
+
+## Authentication Flow
+
+1. **Sign Up**: Users choose Event-Goer or Organizer role during registration
+2. **Profile Created**: A profile row is created in `profiles` table with chosen role
+3. **Sign In**: Email/password authentication via Supabase
+4. **Role Loaded**: App fetches role from `profiles` table
+5. **Session Persistence**: Sessions persist across page refreshes
+6. **Sign Out**: Clears session and returns to logged-out state
 
 ## Project Structure
 
@@ -51,16 +140,25 @@ src/
 │   ├── submit/            # Event submission form
 │   ├── about/             # About page
 │   ├── login/             # Login page
-│   └── register/          # Registration page
+│   ├── register/          # Registration page
+│   ├── admin/             # Admin dashboard (admin only)
+│   └── api/               # API routes
 ├── components/            # Reusable components
 │   ├── Navigation.tsx     # Header navigation
 │   ├── Footer.tsx         # Site footer
 │   ├── EventCard.tsx      # Event display card
 │   └── CategoryFilter.tsx # Category filter buttons
+├── contexts/              # React contexts
+│   └── AuthContext.tsx    # Authentication state (fetches from profiles)
+├── lib/                   # Utilities
+│   ├── supabaseClient.ts  # Browser Supabase client
+│   ├── supabaseServer.ts  # Server Supabase client
+│   ├── auth.ts            # Server-side auth helpers
+│   └── prisma.ts          # Prisma client
 ├── data/                  # Mock data
 │   └── mockData.ts        # Sample events and venues
 └── types/                 # TypeScript types
-    └── event.ts           # Event, Venue, User types
+    └── event.ts           # Event, Venue types
 ```
 
 ## Design System
@@ -77,7 +175,7 @@ src/
 ## Event Categories
 
 - Concerts
-- Food & Drink Deals
+- Food & Drink Specials
 - Trivia Nights
 - Theatre & Arts
 - Sports
@@ -88,15 +186,34 @@ src/
 - Family Friendly
 - Community Events
 
-## Backend Integration Notes
+## Scripts
 
-The UI is designed for easy backend integration:
+```bash
+npm run dev        # Start development server
+npm run build      # Build for production
+npm run start      # Start production server
+npm run lint       # Run ESLint
+npm run db:seed    # Seed database with sample data
+npm run db:reset   # Reset database (removes all data)
+npm run db:studio  # Open Prisma Studio
+```
 
-1. **Events**: Replace `mockData.ts` functions with API calls
-2. **Authentication**: Wire up login/register forms to auth provider
-3. **Event Submission**: Connect form to POST endpoint
-4. **Favorites**: Add user preference storage
-5. **Search**: Connect to backend search/filter API
+## Troubleshooting
+
+### "Missing Supabase environment variables"
+Make sure you have created `.env.local` with the correct Supabase URL and anon key.
+
+### "Invalid login credentials"
+- Check that the email and password are correct
+- Ensure the user exists in Supabase Auth
+
+### Admin can't access admin dashboard
+1. Go to Supabase **Table Editor** → **profiles**
+2. Verify your row has `role` set to `admin`
+3. Try logging out and back in to refresh the session
+
+### "relation 'profiles' does not exist"
+You need to run the SQL setup script. Go to Supabase **SQL Editor** and run the contents of `supabase-setup.sql`.
 
 ## Related
 

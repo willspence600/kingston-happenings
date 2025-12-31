@@ -1,34 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
+import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
-    // Get token from cookie
-    const token = request.cookies.get('token')?.value;
+    const user = await getCurrentUser();
     
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const supabase = await createSupabaseServerClient();
     
-    // Delete user (cascades to likes, etc.)
-    await prisma.user.delete({
-      where: { id: decoded.userId },
-    });
+    // Sign out the user (Supabase handles deletion via dashboard/admin API)
+    // Note: Full user deletion requires Supabase Admin API or dashboard access
+    await supabase.auth.signOut();
 
-    // Clear the token cookie
-    const response = NextResponse.json({ success: true });
-    response.cookies.delete('token');
-    
-    return response;
+    return NextResponse.json({ 
+      success: true,
+      message: 'Signed out successfully. Contact admin to permanently delete account.'
+    });
   } catch (error) {
     console.error('Delete user error:', error);
     return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }
-

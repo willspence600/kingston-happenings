@@ -4,7 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, ExternalLink, Navigation, Calendar, Heart, Tag, Accessibility, UtensilsCrossed } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useEvents } from '@/contexts/EventsContext';
 import EventCard from '@/components/EventCard';
 
@@ -107,7 +107,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           <div className="bg-card border border-border rounded-xl p-4 text-center">
             <Tag size={24} className="mx-auto text-amber-500 mb-2" />
             <p className="text-2xl font-display text-foreground">{upcomingDeals.length}</p>
-            <p className="text-sm text-muted-foreground">Active Deals</p>
+            <p className="text-sm text-muted-foreground">Active Specials</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-4 text-center">
             <Heart size={24} className="mx-auto text-red-500 mb-2" />
@@ -121,51 +121,90 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </section>
 
-        {/* Food & Drink Deals */}
-        {upcomingDeals.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-2xl sm:text-3xl text-foreground flex items-center gap-2">
-                <Tag size={24} className="text-amber-500" />
-                Food & Drink Deals
-              </h2>
-              <span className="text-muted-foreground">
-                {upcomingDeals.length} deal{upcomingDeals.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {upcomingDeals.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Upcoming Events (non-deals) */}
+        {/* Upcoming Events and Food & Drink Specials - Side by Side */}
         <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl sm:text-3xl text-foreground">
-              Upcoming Events
-            </h2>
-            <span className="text-muted-foreground">
-              {upcomingRegularEvents.length} event{upcomingRegularEvents.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Upcoming Events Column */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl sm:text-3xl text-foreground">
+                  Upcoming Events
+                </h2>
+                <span className="text-muted-foreground">
+                  {upcomingRegularEvents.length} event{upcomingRegularEvents.length !== 1 ? 's' : ''}
+                </span>
+              </div>
 
-          {upcomingRegularEvents.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {upcomingRegularEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
+              {upcomingRegularEvents.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {upcomingRegularEvents.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-muted rounded-2xl">
+                  <Calendar size={48} className="mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-display text-xl text-foreground mb-2">No Upcoming Events</h3>
+                  <p className="text-muted-foreground">Check back soon for new events at this venue.</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12 bg-muted rounded-2xl">
-              <Calendar size={48} className="mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-display text-xl text-foreground mb-2">No Upcoming Events</h3>
-              <p className="text-muted-foreground">Check back soon for new events at this venue.</p>
+
+            {/* Food & Drink Specials Column */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl sm:text-3xl text-foreground">
+                  Food & Drink Specials
+                </h2>
+                <span className="text-muted-foreground">
+                  {upcomingDeals.length} special{upcomingDeals.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {upcomingDeals.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingDeals.map((event) => (
+                    <Link
+                      key={event.id}
+                      href={`/events/${event.id}`}
+                      className="block group bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all hover:shadow-md"
+                    >
+                      <div className="flex gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-1 mb-1">
+                            {event.title}
+                          </h3>
+                          {event.description && (
+                            <p className="text-muted-foreground text-sm line-clamp-2 mb-2">
+                              {event.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3">
+                            {event.price && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                                {event.price}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground text-sm flex items-center gap-1">
+                              <Calendar size={14} />
+                              {format(new Date(event.date), 'MMM d')} • {format(parseISO(`2000-01-01T${event.startTime}`), 'h:mm a')}
+                              {event.endTime && ` - ${format(parseISO(`2000-01-01T${event.endTime}`), 'h:mm a')}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-muted rounded-2xl">
+                  <Tag size={48} className="mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-display text-xl text-foreground mb-2">No Active Specials</h3>
+                  <p className="text-muted-foreground">Check back soon for new specials at this venue.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </section>
 
         {/* Past Events */}

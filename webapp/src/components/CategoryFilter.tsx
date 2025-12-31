@@ -11,19 +11,22 @@ interface CategoryFilterProps {
 }
 
 const allCategories: EventCategory[] = [
+  'live-music',
+  'activity-nights',
+  'daytime',
+  'sports',
+  'all-day',
+  '19plus',
+  'workshop',
   'concert',
+  'theatre',
+  'market',
+  'nightlife',
   'food-deal',
   'trivia',
-  'theatre',
-  'sports',
   'festival',
-  'market',
-  'workshop',
-  'nightlife',
   'family',
   'community',
-  'activity',
-  '19plus',
 ];
 
 export default function CategoryFilter({ 

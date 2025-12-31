@@ -6,7 +6,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
-  ArrowRight
+  ArrowRight,
+  Utensils
 } from 'lucide-react';
 import { 
   format, 
@@ -22,7 +23,7 @@ import {
   isToday
 } from 'date-fns';
 import { useEvents } from '@/contexts/EventsContext';
-import { categoryColors, categoryLabels, EventCategory } from '@/types/event';
+import { categoryColors, categoryLabels, EventCategory, browseCategories } from '@/types/event';
 import EventCard from '@/components/EventCard';
 
 export default function CalendarPage() {
@@ -30,6 +31,7 @@ export default function CalendarPage() {
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(browseCategories);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -42,8 +44,24 @@ export default function CalendarPage() {
     ? getEventsByDate(format(selectedDate, 'yyyy-MM-dd'))
     : [];
 
+  // Separate events from food & drink specials
+  const eventsOnly = selectedDateEvents.filter(e => !e.categories.includes('food-deal'));
+  const specialsOnly = selectedDateEvents.filter(e => e.categories.includes('food-deal'));
+
   const getEventsForDay = (date: Date) => {
-    return getEventsByDate(format(date, 'yyyy-MM-dd'));
+    const events = getEventsByDate(format(date, 'yyyy-MM-dd'));
+    // Filter by selected categories
+    return events.filter(event => 
+      event.categories.some(cat => selectedCategories.includes(cat))
+    );
+  };
+
+  const toggleCategory = (category: EventCategory) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
   };
 
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -72,18 +90,43 @@ export default function CalendarPage() {
           {/* Calendar */}
           <div className="lg:col-span-2">
             <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
-              {/* Legend at Top */}
+              {/* Legend at Top - Filterable categories */}
               <div className="mb-6 pb-4 border-b border-border">
-                <p className="text-sm text-muted-foreground mb-3">Event Categories</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-muted-foreground">Filter Event Categories</p>
+                  <button
+                    onClick={() => {
+                      setSelectedCategories(
+                        selectedCategories.length === browseCategories.length 
+                          ? [] 
+                          : browseCategories
+                      );
+                    }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {selectedCategories.length === browseCategories.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {(Object.entries(categoryColors) as [EventCategory, string][]).map(([category, color]) => (
-                    <div key={category} className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                      <span className="text-xs text-muted-foreground">
-                        {categoryLabels[category]}
-                      </span>
-                    </div>
-                  ))}
+                  {browseCategories.map((category) => {
+                    const isSelected = selectedCategories.includes(category);
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => toggleCategory(category)}
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all ${
+                          isSelected 
+                            ? 'bg-primary/10 hover:bg-primary/20' 
+                            : 'hover:bg-muted/50 opacity-50'
+                        }`}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full ${categoryColors[category]}`} />
+                        <span className={`text-xs ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {categoryLabels[category]}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -182,26 +225,53 @@ export default function CalendarPage() {
           <div className="lg:col-span-1">
             <div className="sticky top-24">
               <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarIcon size={20} className="text-primary" />
-                  <h3 className="font-display text-xl text-foreground">
-                    {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Select a Date'}
-                  </h3>
-                </div>
+                <h3 className="font-display text-xl text-foreground mb-4">
+                  {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Select a Date'}
+                </h3>
 
                 {selectedDate && (
                   <>
                     {selectedDateEvents.length > 0 ? (
-                      <div className="space-y-3">
-                        {selectedDateEvents.map((event) => (
-                          <EventCard key={event.id} event={event} variant="compact" />
-                        ))}
+                      <div className="space-y-6">
+                        {/* Events Section */}
+                        {eventsOnly.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                              <CalendarIcon size={16} className="text-primary" />
+                              <h4 className="font-medium text-foreground text-sm">
+                                Events ({eventsOnly.length})
+                              </h4>
+                            </div>
+                            <div className="space-y-3">
+                              {eventsOnly.map((event) => (
+                                <EventCard key={event.id} event={event} variant="compact" />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Food & Drink Specials Section */}
+                        {specialsOnly.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                              <Utensils size={16} className="text-primary" />
+                              <h4 className="font-medium text-foreground text-sm">
+                                Food & Drink Specials ({specialsOnly.length})
+                              </h4>
+                            </div>
+                            <div className="space-y-3">
+                              {specialsOnly.map((event) => (
+                                <EventCard key={event.id} event={event} variant="compact" />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         
                         <Link
-                          href={`/events?date=${format(selectedDate, 'yyyy-MM-dd')}`}
+                          href={`/events?tab=all&date=${format(selectedDate, 'yyyy-MM-dd')}`}
                           className="flex items-center justify-center gap-2 w-full py-2 text-sm text-primary hover:underline"
                         >
-                          See all events
+                          See all
                           <ArrowRight size={14} />
                         </Link>
                       </div>

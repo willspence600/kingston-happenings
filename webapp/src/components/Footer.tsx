@@ -21,7 +21,7 @@ export default function Footer() {
             </Link>
             <p className="text-muted-foreground text-sm max-w-md mb-4">
               Your guide to everything happening in Kingston, Ontario. From concerts to trivia nights, 
-              food deals to festivals – discover what&apos;s on in the Limestone City.
+              food specials to festivals – discover what&apos;s on in the Limestone City.
             </p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin size={16} />
@@ -55,7 +55,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/events?category=food-deal" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Food Deals
+                  Food Specials
                 </Link>
               </li>
             </ul>
