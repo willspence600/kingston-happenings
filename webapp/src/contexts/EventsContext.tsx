@@ -175,24 +175,29 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const submitEvent = async (eventData: EventSubmission): Promise<Event | null> => {
     try {
+      console.log('[EventsContext] Submitting event:', eventData.title);
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(eventData),
       });
 
+      const data = await res.json();
+      
       if (res.ok) {
-        const data = await res.json();
+        console.log('[EventsContext] Event submitted successfully:', data.event?.id, 'submittedById:', data.event?.submittedById, 'status:', data.event?.status);
         // Refresh events lists
         await refreshEvents();
         await refreshPendingEvents();
         await refreshVenues(); // In case a new venue was created
         return data.event;
+      } else {
+        console.error('[EventsContext] Failed to submit event:', res.status, data);
+        throw new Error(data.error || 'Failed to submit event');
       }
-      return null;
     } catch (error) {
-      console.error('Failed to submit event:', error);
-      return null;
+      console.error('[EventsContext] Exception submitting event:', error);
+      throw error;
     }
   };
 

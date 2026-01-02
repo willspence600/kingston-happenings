@@ -136,6 +136,12 @@ function generateRecurringDates(
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
 
     const {
@@ -197,10 +203,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-approve if admin or trusted organizer
-    const userRecord = user ? await prisma.user.findUnique({ where: { id: user.id } }) : null;
-    const isTrusted = userRecord?.isTrusted || false;
-    const status = (user?.role === 'admin' || isTrusted) ? 'approved' : 'pending';
+    // Auto-approve if admin (trusted organizer check removed since we're using Supabase)
+    // Note: submittedById will store the Supabase user ID (UUID), not Prisma User ID (CUID)
+    // The relation to Prisma User will be null, but that's okay - we track by Supabase ID
+    const status = user.role === 'admin' ? 'approved' : 'pending';
 
     // Generate dates for recurring events
     const eventDates = isRecurring && recurrencePattern
@@ -211,6 +217,7 @@ export async function POST(request: NextRequest) {
     const recurrenceDay = isRecurring ? new Date(date + 'T12:00:00').getDay() : null;
 
     // Create the first (parent) event
+    console.log('[API] Creating event with submittedById:', user.id, 'status:', status);
     const parentEvent = await prisma.event.create({
       data: {
         title,
@@ -223,7 +230,7 @@ export async function POST(request: NextRequest) {
         ticketUrl,
         imageUrl,
         status,
-        submittedById: user?.id,
+        submittedById: user.id,
         isRecurring: isRecurring || false,
         recurrencePattern: isRecurring ? recurrencePattern : null,
         recurrenceDay,
@@ -237,6 +244,7 @@ export async function POST(request: NextRequest) {
         categories: true,
       },
     });
+    console.log('[API] Event created:', parentEvent.id, 'submittedById:', parentEvent.submittedById, 'status:', parentEvent.status);
 
     // Create additional events for recurring instances
     if (eventDates.length > 1) {
@@ -255,7 +263,7 @@ export async function POST(request: NextRequest) {
             ticketUrl,
             imageUrl,
             status,
-            submittedById: user?.id,
+            submittedById: user.id,
             isRecurring: true,
             recurrencePattern,
             recurrenceDay,
@@ -269,17 +277,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Transform event to match frontend format
+    const transformedEvent = {
+      id: parentEvent.id,
+      title: parentEvent.title,
+      description: parentEvent.description,
+      date: parentEvent.date,
+      startTime: parentEvent.startTime,
+      endTime: parentEvent.endTime,
+      price: parentEvent.price,
+      ticketUrl: parentEvent.ticketUrl,
+      imageUrl: parentEvent.imageUrl,
+      featured: parentEvent.featured,
+      status: parentEvent.status,
+      submittedById: parentEvent.submittedById,
+      venue: parentEvent.venue,
+      categories: parentEvent.categories.map((c) => c.name),
+      isRecurring: parentEvent.isRecurring,
+      recurrencePattern: parentEvent.recurrencePattern,
+      recurrenceDay: parentEvent.recurrenceDay,
+      recurrenceEndDate: parentEvent.recurrenceEndDate,
+      parentEventId: parentEvent.parentEventId,
+    };
+
     return NextResponse.json({
-      event: {
-        ...parentEvent,
-        categories: parentEvent.categories.map((c) => c.name),
-      },
+      event: transformedEvent,
       totalCreated: eventDates.length,
     });
   } catch (error) {
-    console.error('Create event error:', error);
+    console.error('[API] Create event error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : 'Unknown';
+    console.error('[API] Error details:', { 
+      errorName,
+      errorMessage, 
+      errorStack,
+      error: error instanceof Error ? error.toString() : String(error)
+    });
+    
+    // Return more detailed error for debugging
     return NextResponse.json(
-      { error: 'Failed to create event' },
+      { 
+        error: errorMessage || 'Failed to create event',
+        details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+      },
       { status: 500 }
     );
   }

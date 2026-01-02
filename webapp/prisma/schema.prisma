@@ -23,7 +23,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  submittedEvents Event[] @relation("SubmittedBy")
+  // Note: submittedEvents relation removed since we store Supabase UUIDs directly in submittedById
   likes           Like[]
 }
 
@@ -70,7 +70,9 @@ model Event {
   // Relations
   venue         Venue           @relation(fields: [venueId], references: [id])
   venueId       String
-  submittedBy   User?           @relation("SubmittedBy", fields: [submittedById], references: [id])
+  // submittedById stores Supabase user ID (UUID), not Prisma User ID (CUID)
+  // We store it as a plain string without foreign key constraint since Supabase users
+  // don't exist in the Prisma User table
   submittedById String?
   categories    EventCategory[]
   likes         Like[]

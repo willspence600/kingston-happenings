@@ -13,6 +13,7 @@ export interface User {
   role: UserRole;
   venueName?: string;
   createdAt: string;
+  emailVerified: boolean;
 }
 
 interface Profile {
@@ -26,11 +27,12 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string; needsVerification?: boolean }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isOrganizer: boolean;
   refreshUser: () => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 interface RegisterData {
@@ -108,10 +110,14 @@ function buildUser(supabaseUser: SupabaseUser, profile: Profile | null): User {
   const metadata = supabaseUser.user_metadata || {};
   const finalRole = profile?.role || (metadata.role as UserRole) || 'user';
   
+  // Check if email is verified
+  const emailVerified = !!supabaseUser.email_confirmed_at || !!supabaseUser.confirmed_at;
+  
   console.log('[Auth] Building user object:', {
     profileRole: profile?.role,
     metadataRole: metadata.role,
     finalRole,
+    emailVerified,
   });
   
   return {
@@ -121,6 +127,7 @@ function buildUser(supabaseUser: SupabaseUser, profile: Profile | null): User {
     role: finalRole,
     venueName: profile?.venue_name || metadata.venueName,
     createdAt: supabaseUser.created_at,
+    emailVerified,
   };
 }
 
@@ -151,6 +158,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load user with profile from profiles table
   const loadUserWithProfile = useCallback(async (supabaseUser: SupabaseUser) => {
     console.log('[Auth] Loading user with profile:', supabaseUser.id);
+    
+    // Check if email is verified - if not, don't load user
+    const emailVerified = !!supabaseUser.email_confirmed_at || !!supabaseUser.confirmed_at;
+    if (!emailVerified) {
+      console.log('[Auth] Email not verified, not loading user');
+      setUser(null);
+      return;
+    }
     
     let profile = await fetchProfile(supabaseUser.id);
     
@@ -234,6 +249,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
+        // Check if email is verified before loading user
+        const emailVerified = !!data.user.email_confirmed_at || !!data.user.confirmed_at;
+        if (!emailVerified) {
+          return { success: false, error: 'Please verify your email address before signing in. Check your inbox for a verification email.' };
+        }
         console.log('[Auth] Login successful, loading profile...');
         await loadUserWithProfile(data.user);
         return { success: true };
@@ -246,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
+  const register = async (data: RegisterData): Promise<{ success: boolean; error?: string; needsVerification?: boolean }> => {
     console.log('[Auth] Register attempt:', { email: data.email, role: data.role });
     try {
       // Sign up with Supabase Auth
@@ -287,8 +307,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data.role === 'organizer' ? data.venueName : undefined
         );
 
-        setUser(buildUser(authData.user, profile));
-        return { success: true };
+        // Check if email is verified - if not, don't set user (they need to verify first)
+        const emailVerified = !!authData.user.email_confirmed_at || !!authData.user.confirmed_at;
+        
+        if (emailVerified) {
+          setUser(buildUser(authData.user, profile));
+          return { success: true };
+        } else {
+          // Email not verified - return success but don't set user
+          // The registration page will show the verification message
+          return { success: true, needsVerification: true };
+        }
       }
 
       return { success: false, error: 'Failed to create account. Please try again.' };
@@ -320,6 +349,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === 'admin',
         isOrganizer: user?.role === 'organizer' || user?.role === 'admin',
         refreshUser,
+        resendVerificationEmail: async (email: string) => {
+          try {
+            const { error } = await supabase.auth.resend({
+              type: 'signup',
+              email: email.toLowerCase().trim(),
+            });
+
+            if (error) {
+              console.error('[Auth] Resend verification error:', error.message);
+              return { success: false, error: error.message };
+            }
+
+            return { success: true };
+          } catch (error) {
+            console.error('[Auth] Resend verification exception:', error);
+            return { success: false, error: 'Failed to resend verification email. Please try again.' };
+          }
+        },
       }}
     >
       {children}

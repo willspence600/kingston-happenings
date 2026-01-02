@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Heart, Calendar, ArrowRight, FileText, Clock, CheckCircle, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,21 +40,30 @@ export default function MyEventsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch submitted events when tab changes or user is organizer
-  useEffect(() => {
-    if (user && (user.role === 'organizer' || user.role === 'admin')) {
+  // Fetch submitted events for all users
+  const fetchSubmissions = useCallback(async () => {
+    if (user) {
       setLoadingSubmissions(true);
-      fetch('/api/events/my-submissions')
-        .then(res => res.json())
-        .then(data => {
-          if (data.events) {
-            setSubmittedEvents(data.events);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoadingSubmissions(false));
+      try {
+        const res = await fetch('/api/events/my-submissions');
+        const data = await res.json();
+        console.log('[MyEvents] Fetched submissions:', data.events?.length || 0, 'events');
+        if (data.events) {
+          setSubmittedEvents(data.events);
+        }
+      } catch (error) {
+        console.error('[MyEvents] Error fetching submissions:', error);
+      } finally {
+        setLoadingSubmissions(false);
+      }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && activeTab === 'submitted') {
+      fetchSubmissions();
+    }
+  }, [user, activeTab, fetchSubmissions]);
 
   if (authLoading) {
     return (
@@ -125,8 +134,7 @@ export default function MyEventsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
-        {isOrganizer && (
-          <div className="flex gap-2 mb-8 border-b border-border">
+        <div className="flex gap-2 mb-8 border-b border-border">
             <button
               onClick={() => setActiveTab('liked')}
               className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors relative ${
@@ -161,7 +169,6 @@ export default function MyEventsPage() {
               )}
             </button>
           </div>
-        )}
 
         {/* Liked Events Tab */}
         {activeTab === 'liked' && (
@@ -209,12 +216,20 @@ export default function MyEventsPage() {
                   <p className="text-muted-foreground">
                     {submittedEvents.length} submitted event{submittedEvents.length !== 1 ? 's' : ''}
                   </p>
-                  <Link
-                    href="/submit"
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Submit New Event
-                  </Link>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => fetchSubmissions()}
+                      className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg font-medium hover:bg-muted transition-colors"
+                    >
+                      Refresh
+                    </button>
+                    <Link
+                      href="/submit"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Submit New Event
+                    </Link>
+                  </div>
                 </div>
                 <div className="space-y-4">
                   {submittedEvents.map((event) => (

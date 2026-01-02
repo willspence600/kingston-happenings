@@ -36,24 +36,39 @@ export default function HomePage() {
     : allTodayEvents;
   // Keep the sorted order from getTodaysEvents (already sorted by promotion tier)
   const todayEvents = filteredTodayEvents.slice(0, 9);
-  const todayDeals = todaysEvents.filter(e => e.categories.includes('food-deal')).slice(0, 6);
+  
+  // Filter food & drink specials and limit featured/promoted venues to 1 special each
+  // getTodaysEvents() already sorts by promotion tier, so we maintain that order
+  const allDeals = todaysEvents.filter(e => e.categories.includes('food-deal'));
+  const processedDeals: typeof allDeals = [];
+  const featuredPromotedVenueIds = new Set<string>();
+  
+  // Process deals: for featured/promoted venues, only take first special per venue
+  // For standard venues, take all their specials
+  allDeals.forEach(deal => {
+    const venueId = deal.venue?.id || 'unknown';
+    const promotionTier = deal.venue?.promotionTier;
+    
+    // If venue is featured or promoted and we haven't added a deal from this venue yet
+    if ((promotionTier === 'featured' || promotionTier === 'promoted')) {
+      if (!featuredPromotedVenueIds.has(venueId)) {
+        processedDeals.push(deal);
+        featuredPromotedVenueIds.add(venueId);
+      }
+      // Skip additional deals from this featured/promoted venue
+    } else {
+      // For standard venues, add all their deals
+      processedDeals.push(deal);
+    }
+  });
+  
+  const todayDeals = processedDeals.slice(0, 7);
   
   // Get first name from user name
   const firstName = user?.name?.split(' ')[0];
 
-  // Match heights of events and specials containers
-  useEffect(() => {
-    const matchHeights = () => {
-      if (specialsContainerRef.current && eventsContainerRef.current) {
-        const specialsHeight = specialsContainerRef.current.offsetHeight;
-        eventsContainerRef.current.style.height = `${specialsHeight}px`;
-      }
-    };
-
-    matchHeights();
-    window.addEventListener('resize', matchHeights);
-    return () => window.removeEventListener('resize', matchHeights);
-  }, [todayEvents, todayDeals]);
+  // Note: Height matching removed to allow event cards to maintain their natural size
+  // Event cards now use aspect-square to maintain consistent sizing
 
   return (
     <div className="min-h-screen">
@@ -166,12 +181,12 @@ export default function HomePage() {
               </div>
               
               {todayEvents.length > 0 ? (
-                <div ref={eventsContainerRef} className="grid grid-cols-2 sm:grid-cols-3 gap-3" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
+                <div ref={eventsContainerRef} className="grid grid-cols-3 gap-4">
                   {todayEvents.map((event) => (
                     <Link
                       key={event.id}
                       href={`/events/${event.id}`}
-                      className="group relative h-full rounded-xl overflow-hidden bg-muted border border-border hover:border-primary/50 transition-all hover:shadow-lg"
+                      className="group relative aspect-square rounded-xl overflow-hidden bg-muted border border-border hover:border-primary/50 transition-all hover:shadow-lg"
                     >
                       {event.imageUrl ? (
                         <img
@@ -191,16 +206,16 @@ export default function HomePage() {
                             {categoryLabels[event.categories[0] as EventCategory]}
                           </span>
                         )}
-                        <h4 className="font-medium text-white text-sm line-clamp-2 leading-tight">
+                        <h4 className="font-medium text-white text-base line-clamp-2 leading-tight">
                           {event.title}
                         </h4>
                         <div className="flex flex-col gap-0.5 mt-1">
-                          <p className="text-white/70 text-xs flex items-center gap-1">
-                            <Clock size={10} />
+                          <p className="text-white/70 text-sm flex items-center gap-1">
+                            <Clock size={12} />
                             {format(parseISO(`2000-01-01T${event.startTime}`), 'h:mm a')}
                           </p>
-                          <p className="text-white/70 text-xs flex items-center gap-1">
-                            <MapPin size={10} />
+                          <p className="text-white/70 text-sm flex items-center gap-1">
+                            <MapPin size={12} />
                             {event.venue.name}
                           </p>
                         </div>

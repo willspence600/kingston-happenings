@@ -132,12 +132,7 @@ function EventsContent() {
     return eventsPool
       .filter(event => event.categories.includes('food-deal'))
       .sort((a, b) => {
-        // Sort by sortOrder first, then by date and time
-        if (a.sortOrder !== null && a.sortOrder !== undefined && b.sortOrder !== null && b.sortOrder !== undefined) {
-          return a.sortOrder - b.sortOrder;
-        }
-        if (a.sortOrder !== null && a.sortOrder !== undefined) return -1;
-        if (b.sortOrder !== null && b.sortOrder !== undefined) return 1;
+        // Sort by date and time
         return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime);
       });
   }, [eventsPool]);
@@ -547,9 +542,9 @@ function EventsContent() {
                             <span className="text-sm font-normal text-muted-foreground">({eventsForDate.length})</span>
                           </h4>
                           {eventsForDate.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                               {eventsForDate.map((event) => (
-                                <EventCard key={event.id} event={event} compact />
+                                <EventCard key={event.id} event={event} />
                               ))}
                             </div>
                           ) : (
@@ -589,15 +584,15 @@ function EventsContent() {
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-sm">
+                                    <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-base">
                                       {deal.title}
                                     </h5>
-                                    <p className="text-muted-foreground text-xs flex items-center gap-1 mt-0.5">
-                                      <MapPin size={10} />
+                                    <p className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
+                                      <MapPin size={12} />
                                       {deal.venue.name}
                                     </p>
                                     {deal.price && (
-                                      <p className="text-primary font-medium text-xs mt-1">
+                                      <p className="text-primary font-medium text-sm mt-1">
                                         {deal.price}
                                       </p>
                                     )}

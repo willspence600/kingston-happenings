@@ -10,6 +10,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[API] Fetching submissions for user:', user.id, 'user type:', typeof user.id);
+    
+    // Also check all events to see what submittedById values exist
+    const allEvents = await prisma.event.findMany({
+      select: { id: true, title: true, submittedById: true, status: true },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+    });
+    console.log('[API] Sample of recent events:', allEvents.map(e => ({ id: e.id, title: e.title, submittedById: e.submittedById, status: e.status })));
+    
     const events = await prisma.event.findMany({
       where: { submittedById: user.id },
       include: {
@@ -21,6 +31,11 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    console.log('[API] Found', events.length, 'submissions for user', user.id);
+    if (events.length > 0) {
+      console.log('[API] Sample submission:', { id: events[0].id, title: events[0].title, submittedById: events[0].submittedById, status: events[0].status });
+    }
 
     const transformedEvents = events.map((event) => ({
       id: event.id,
