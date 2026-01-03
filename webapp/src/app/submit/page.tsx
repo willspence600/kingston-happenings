@@ -26,6 +26,8 @@ import {
 import { categoryLabels, EventCategory, browseCategories } from '@/types/event';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/contexts/EventsContext';
+import DatePicker from '@/components/DatePicker';
+import { addDays, parseISO, format } from 'date-fns';
 
 // Generate a unique ID (compatible with older browsers)
 const generateId = (): string => {
@@ -302,6 +304,23 @@ export default function SubmitEventPage() {
         setError(`Please select a venue or enter new venue details for "${form.title || 'untitled event'}"`);
         return;
       }
+
+      // Validate recurring weekly events require an end date
+      if (form.isRecurring && form.recurrencePattern === 'weekly' && !form.recurrenceEndDate) {
+        setError(`Please select an end date for the recurring weekly event "${form.title || 'untitled event'}". Maximum duration is 52 weeks.`);
+        return;
+      }
+
+      // Validate recurrence end date is within 52 weeks
+      if (form.isRecurring && form.recurrencePattern === 'weekly' && form.recurrenceEndDate && form.date) {
+        const startDate = new Date(form.date);
+        const endDate = new Date(form.recurrenceEndDate);
+        const weeksDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksDiff > 52) {
+          setError(`The recurrence period for "${form.title || 'untitled event'}" cannot exceed 52 weeks. Please select an end date within 52 weeks from the start date.`);
+          return;
+        }
+      }
     }
 
     setIsSubmitting(true);
@@ -357,6 +376,23 @@ export default function SubmitEventPage() {
           setError(`Please select a venue or enter new venue details for "${form.title || 'untitled special'}"`);
           return;
         }
+
+        // Validate recurring weekly specials require an end date
+        if (form.isRecurring && form.recurrencePattern === 'weekly' && !form.recurrenceEndDate) {
+          setError(`Please select an end date for the recurring weekly special "${form.title || 'untitled special'}". Maximum duration is 52 weeks.`);
+          return;
+        }
+
+        // Validate recurrence end date is within 52 weeks
+        if (form.isRecurring && form.recurrencePattern === 'weekly' && form.recurrenceEndDate && form.date) {
+          const startDate = new Date(form.date);
+          const endDate = new Date(form.recurrenceEndDate);
+          const weeksDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+          if (weeksDiff > 52) {
+            setError(`The recurrence period for "${form.title || 'untitled special'}" cannot exceed 52 weeks. Please select an end date within 52 weeks from the start date.`);
+            return;
+          }
+        }
       }
 
       setIsSubmitting(true);
@@ -367,9 +403,10 @@ export default function SubmitEventPage() {
           const imageUrl = form.imagePreview || undefined;
 
           // Convert special categories to EventCategory format
-          const categories: EventCategory[] = [];
-          if (form.categories.includes('food')) categories.push('food-deal');
-          if (form.categories.includes('drink')) categories.push('food-deal'); // Both use food-deal category
+          // Store both 'food-deal' (for general filtering) and 'food'/'drink' (for specific filtering)
+          const categories: EventCategory[] = ['food-deal'];
+          if (form.categories.includes('food')) categories.push('food');
+          if (form.categories.includes('drink')) categories.push('drink');
 
           // Handle recurring specials
           if (form.isRecurring && form.recurrencePattern === 'days' && form.recurringDays.length > 0) {
@@ -763,13 +800,12 @@ export default function SubmitEventPage() {
                     <label htmlFor={`date-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
                       Date *
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id={`date-${formData.id}`}
-                      required
                       value={formData.date}
-                      onChange={(e) => updateForm(formData.id, { date: e.target.value })}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                      onChange={(value) => updateForm(formData.id, { date: value })}
+                      required
+                      placeholder="Select date"
                     />
                   </div>
 
@@ -860,17 +896,27 @@ export default function SubmitEventPage() {
                         {formData.recurrencePattern !== 'custom' && (
                           <div>
                             <label className="block text-sm font-medium text-foreground mb-2">
-                              Until
+                              Until{formData.recurrencePattern === 'weekly' ? ' *' : ''}
                             </label>
-                            <input
-                              type="date"
+                            <DatePicker
                               value={formData.recurrenceEndDate}
-                              onChange={(e) => updateForm(formData.id, { recurrenceEndDate: e.target.value })}
+                              onChange={(value) => updateForm(formData.id, { recurrenceEndDate: value })}
                               min={formData.date}
-                              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                              max={formData.recurrencePattern === 'weekly' && formData.date ? (() => {
+                                try {
+                                  const startDate = parseISO(formData.date);
+                                  return format(addDays(startDate, 52 * 7), 'yyyy-MM-dd');
+                                } catch {
+                                  return undefined;
+                                }
+                              })() : undefined}
+                              required={formData.recurrencePattern === 'weekly'}
+                              placeholder={formData.recurrencePattern === 'weekly' ? 'Select end date (required, max 52 weeks)' : 'Select end date'}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                              Leave empty for no end date (max 52 weeks)
+                              {formData.recurrencePattern === 'weekly' 
+                                ? 'Required. Maximum duration is 52 weeks from the start date.'
+                                : 'Leave empty for no end date (max 52 weeks)'}
                             </p>
                           </div>
                         )}
@@ -901,18 +947,17 @@ export default function SubmitEventPage() {
                               </span>
                             ))}
                           </div>
-                          <input
-                            type="date"
-                            min={formData.date}
-                            onChange={(e) => {
-                              if (e.target.value && !formData.customDates.includes(e.target.value)) {
+                          <DatePicker
+                            value=""
+                            onChange={(value) => {
+                              if (value && !formData.customDates.includes(value)) {
                                 updateForm(formData.id, { 
-                                  customDates: [...formData.customDates, e.target.value].sort()
+                                  customDates: [...formData.customDates, value].sort()
                                 });
                               }
-                              e.target.value = '';
                             }}
-                            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                            min={formData.date}
+                            placeholder="Click to add date"
                           />
                           <p className="text-xs text-muted-foreground mt-2">
                             Click dates to add them. The first date is set above.
@@ -1252,13 +1297,12 @@ export default function SubmitEventPage() {
                     <label htmlFor={`special-date-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
                       Date *
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       id={`special-date-${formData.id}`}
-                      required
                       value={formData.date}
-                      onChange={(e) => updateSpecialForm(formData.id, { date: e.target.value })}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                      onChange={(value) => updateSpecialForm(formData.id, { date: value })}
+                      required
+                      placeholder="Select date"
                     />
                   </div>
 
@@ -1359,17 +1403,25 @@ export default function SubmitEventPage() {
                       {formData.recurrencePattern === 'weekly' && (
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">
-                            Until
+                            Until *
                           </label>
-                          <input
-                            type="date"
+                          <DatePicker
                             value={formData.recurrenceEndDate}
-                            onChange={(e) => updateSpecialForm(formData.id, { recurrenceEndDate: e.target.value })}
+                            onChange={(value) => updateSpecialForm(formData.id, { recurrenceEndDate: value })}
                             min={formData.date}
-                            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                            max={formData.date ? (() => {
+                              try {
+                                const startDate = parseISO(formData.date);
+                                return format(addDays(startDate, 52 * 7), 'yyyy-MM-dd');
+                              } catch {
+                                return undefined;
+                              }
+                            })() : undefined}
+                            required
+                            placeholder="Select end date (required, max 52 weeks)"
                           />
                           <p className="text-xs text-muted-foreground mt-2">
-                            Leave empty for no end date (max 52 weeks)
+                            Required. Maximum duration is 52 weeks from the start date.
                           </p>
                         </div>
                       )}

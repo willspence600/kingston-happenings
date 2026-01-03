@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, X, Calendar, Loader2, ChevronDown, Utensils, MapPin, ArrowRight, Clock } from 'lucide-react';
-import { format, parseISO, isEqual, startOfDay, subDays, subMonths, isToday, isTomorrow } from 'date-fns';
+import { Search, X, Calendar, Loader2, ChevronDown, Utensils, MapPin, ArrowRight, Clock, Heart } from 'lucide-react';
+import { format, parseISO, isEqual, startOfDay, subDays, subMonths, addDays, isToday, isTomorrow, isWithinInterval } from 'date-fns';
 import EventCard from '@/components/EventCard';
 import { useEvents } from '@/contexts/EventsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { EventCategory, categoryLabels, categoryColors, categoryColorsMuted, categoryColorsActive, browseCategories } from '@/types/event';
+import DatePicker from '@/components/DatePicker';
+import { Toast } from '@/components/Modal';
 
 type TabType = 'all' | 'events' | 'deals';
 type PastEventsRange = 'none' | 'week' | 'month' | '3months' | '6months';
@@ -78,19 +82,29 @@ function getPromotionTierPriority(tier?: string): number {
 
 function EventsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialCategory = searchParams.get('category') as EventCategory | null;
   const initialDate = searchParams.get('date');
   const tabParam = searchParams.get('tab');
   const initialTab: TabType = tabParam === 'deals' ? 'deals' : tabParam === 'all' ? 'all' : 'events';
 
-  const { events: allEventsFromContext, getUpcomingEvents } = useEvents();
+  const { events: allEventsFromContext, getUpcomingEvents, isLiked, toggleLike, getLikeCount } = useEvents();
+  const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [showToast, setShowToast] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(
     initialCategory ? [initialCategory] : []
   );
+  const [selectedFoodDrinkFilter, setSelectedFoodDrinkFilter] = useState<('food' | 'drink')[]>([]);
+  const [dateFilterMode, setDateFilterMode] = useState<'none' | 'single' | 'range'>(initialDate ? 'single' : 'none');
   const [dateFilter, setDateFilter] = useState(initialDate || '');
+  const [dateRangeStart, setDateRangeStart] = useState('');
+  const [dateRangeEnd, setDateRangeEnd] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDateMode, setTempDateMode] = useState<'single' | 'range'>('single');
+  const datePickerRef = useRef<HTMLDivElement>(null);
   const [freeOnly, setFreeOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [priceFilterEnabled, setPriceFilterEnabled] = useState(false);
@@ -157,10 +171,24 @@ function EventsContent() {
       }
 
       // Date filter
-      if (dateFilter) {
+      if (dateFilterMode === 'single' && dateFilter) {
         const eventDate = startOfDay(parseISO(event.date));
         const filterDate = startOfDay(parseISO(dateFilter));
         if (!isEqual(eventDate, filterDate)) return false;
+      } else if (dateFilterMode === 'range' && dateRangeStart && dateRangeEnd) {
+        const eventDate = startOfDay(parseISO(event.date));
+        const rangeStart = startOfDay(parseISO(dateRangeStart));
+        const rangeEnd = startOfDay(parseISO(dateRangeEnd));
+        if (!isWithinInterval(eventDate, { start: rangeStart, end: rangeEnd })) return false;
+      } else if (dateFilterMode === 'none') {
+        // When no date filter is selected, only show today, tomorrow, and day after tomorrow
+        const eventDate = startOfDay(parseISO(event.date));
+        const todayDate = startOfDay(today);
+        const tomorrowDate = startOfDay(addDays(today, 1));
+        const dayAfterTomorrowDate = startOfDay(addDays(today, 2));
+        if (!isEqual(eventDate, todayDate) && !isEqual(eventDate, tomorrowDate) && !isEqual(eventDate, dayAfterTomorrowDate)) {
+          return false;
+        }
       }
 
       // Free filter
@@ -193,7 +221,7 @@ function EventsContent() {
       }
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [eventsOnly, searchQuery, selectedCategories, dateFilter, freeOnly, priceFilterEnabled, maxPrice]);
+  }, [eventsOnly, searchQuery, selectedCategories, dateFilterMode, dateFilter, dateRangeStart, dateRangeEnd, today, freeOnly, priceFilterEnabled, maxPrice]);
 
   // Filter deals based on filters
   const filteredDeals = useMemo(() => {
@@ -208,11 +236,33 @@ function EventsContent() {
         if (!matchesSearch) return false;
       }
 
+      // Food/Drink filter
+      if (selectedFoodDrinkFilter.length > 0) {
+        const hasSelectedCategory = selectedFoodDrinkFilter.some(filter => 
+          event.categories.includes(filter as EventCategory)
+        );
+        if (!hasSelectedCategory) return false;
+      }
+
       // Date filter
-      if (dateFilter) {
+      if (dateFilterMode === 'single' && dateFilter) {
         const eventDate = startOfDay(parseISO(event.date));
         const filterDate = startOfDay(parseISO(dateFilter));
         if (!isEqual(eventDate, filterDate)) return false;
+      } else if (dateFilterMode === 'range' && dateRangeStart && dateRangeEnd) {
+        const eventDate = startOfDay(parseISO(event.date));
+        const rangeStart = startOfDay(parseISO(dateRangeStart));
+        const rangeEnd = startOfDay(parseISO(dateRangeEnd));
+        if (!isWithinInterval(eventDate, { start: rangeStart, end: rangeEnd })) return false;
+      } else if (dateFilterMode === 'none') {
+        // When no date filter is selected, only show today, tomorrow, and day after tomorrow
+        const eventDate = startOfDay(parseISO(event.date));
+        const todayDate = startOfDay(today);
+        const tomorrowDate = startOfDay(addDays(today, 1));
+        const dayAfterTomorrowDate = startOfDay(addDays(today, 2));
+        if (!isEqual(eventDate, todayDate) && !isEqual(eventDate, tomorrowDate) && !isEqual(eventDate, dayAfterTomorrowDate)) {
+          return false;
+        }
       }
 
       // Free filter
@@ -245,7 +295,7 @@ function EventsContent() {
       }
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [dealsOnly, searchQuery, dateFilter, freeOnly, priceFilterEnabled, maxPrice]);
+  }, [dealsOnly, searchQuery, selectedFoodDrinkFilter, dateFilterMode, dateFilter, dateRangeStart, dateRangeEnd, today, freeOnly, priceFilterEnabled, maxPrice]);
 
   // Group events by date
   const eventsByDate = useMemo(() => {
@@ -320,24 +370,90 @@ function EventsContent() {
   }, [filteredDeals]);
 
   // Get all unique dates for "All" tab (combining events and deals)
+  // Default to today, tomorrow, and the following day unless dateFilter is set
   const allDates = useMemo(() => {
-    const dateSet = new Set<string>();
-    filteredEvents.forEach(e => dateSet.add(e.date));
-    filteredDeals.forEach(d => dateSet.add(d.date));
-    return Array.from(dateSet).sort((a, b) => a.localeCompare(b));
-  }, [filteredEvents, filteredDeals]);
+    const today = new Date();
+    const tomorrow = addDays(today, 1);
+    const dayAfterTomorrow = addDays(today, 2);
+    
+    // If single date filter is set, use that date only
+    if (dateFilterMode === 'single' && dateFilter) {
+      return [dateFilter];
+    }
+    
+    // If date range filter is set, generate all dates in the range
+    if (dateFilterMode === 'range' && dateRangeStart && dateRangeEnd) {
+      const start = parseISO(dateRangeStart);
+      const end = parseISO(dateRangeEnd);
+      const dates: string[] = [];
+      let current = startOfDay(start);
+      const endDay = startOfDay(end);
+      while (current <= endDay) {
+        dates.push(format(current, 'yyyy-MM-dd'));
+        current = addDays(current, 1);
+      }
+      return dates;
+    }
+    
+    // Otherwise, default to today, tomorrow, and day after tomorrow
+    const defaultDates = [
+      format(today, 'yyyy-MM-dd'),
+      format(tomorrow, 'yyyy-MM-dd'),
+      format(dayAfterTomorrow, 'yyyy-MM-dd')
+    ];
+    
+    // Return these three dates (they will show events if they exist, empty state if not)
+    return defaultDates;
+  }, [dateFilterMode, dateFilter, dateRangeStart, dateRangeEnd]);
+
+  // Get button display text
+  const getDateButtonText = () => {
+    if (dateFilterMode === 'single' && dateFilter) {
+      return dateFilter;
+    } else if (dateFilterMode === 'range' && dateRangeStart && dateRangeEnd) {
+      return `${dateRangeStart} to ${dateRangeEnd}`;
+    }
+    return 'yyyy-mm-dd';
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false);
+      }
+    };
+
+    if (showDatePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDatePicker]);
 
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategories([]);
+    setSelectedFoodDrinkFilter([]);
+    setDateFilterMode('none');
     setDateFilter('');
+    setDateRangeStart('');
+    setDateRangeEnd('');
+    setShowDatePicker(false);
     setFreeOnly(false);
     setMaxPrice(100);
     setPriceFilterEnabled(false);
     setPastEventsRange('none');
   };
 
-  const hasActiveFilters = searchQuery || selectedCategories.length > 0 || dateFilter || freeOnly || priceFilterEnabled || pastEventsRange !== 'none';
+  const hasActiveFilters = searchQuery || selectedCategories.length > 0 || selectedFoodDrinkFilter.length > 0 || dateFilterMode !== 'none' || freeOnly || priceFilterEnabled || pastEventsRange !== 'none';
+
+  const toggleFoodDrinkFilter = (category: 'food' | 'drink') => {
+    setSelectedFoodDrinkFilter(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
 
   const toggleCategory = (category: EventCategory) => {
     setSelectedCategories(prev => 
@@ -397,10 +513,10 @@ function EventsContent() {
         <div className="flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="relative w-full sm:w-56">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary drop-shadow-sm" />
           <input
             type="text"
-                placeholder={activeTab === 'deals' ? "Search specials..." : activeTab === 'all' ? "Search all..." : "Search events..."}
+                placeholder="Search events..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-11 pr-4 py-2.5 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm"
@@ -416,14 +532,118 @@ function EventsContent() {
         </div>
 
             {/* Calendar Filter */}
-        <div className="relative">
-              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-                className="w-full sm:w-40 pl-10 pr-3 py-2.5 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm"
-          />
+            <div className="relative" ref={datePickerRef}>
+              <button
+                onClick={() => {
+                  const wasOpen = showDatePicker;
+                  setShowDatePicker(!wasOpen);
+                  if (!wasOpen) {
+                    // Initialize temp mode based on current filter mode
+                    if (dateFilterMode === 'single' || dateFilterMode === 'range') {
+                      setTempDateMode(dateFilterMode);
+                    } else {
+                      setTempDateMode('single');
+                    }
+                  }
+                }}
+                className={`px-4 py-2.5 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm flex items-center gap-2 min-w-[140px] justify-center ${
+                  dateFilterMode !== 'none' ? 'text-primary font-medium' : 'text-muted-foreground'
+                }`}
+              >
+                <Calendar size={16} className={dateFilterMode !== 'none' ? 'text-primary' : 'text-muted-foreground'} />
+                <span>{getDateButtonText()}</span>
+              </button>
+              
+              {/* Date Picker Dropdown */}
+              {showDatePicker && (
+                <div className="absolute top-full mt-2 right-0 bg-card border border-border rounded-xl shadow-lg z-50 p-4 min-w-[280px]">
+                  {/* Mode Toggle */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setTempDateMode('single')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        tempDateMode === 'single'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      Single Date
+                    </button>
+                    <button
+                      onClick={() => setTempDateMode('range')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        tempDateMode === 'range'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      Date Range
+                    </button>
+                  </div>
+                  
+                  {/* Date Input(s) */}
+                  {tempDateMode === 'single' ? (
+                    <div className="mb-4">
+                      <DatePicker
+                        value={dateFilter}
+                        onChange={(value) => setDateFilter(value)}
+                        placeholder="Select date"
+                        className="text-sm"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3 mb-4">
+                      <DatePicker
+                        value={dateRangeStart}
+                        onChange={(value) => setDateRangeStart(value)}
+                        placeholder="Start date"
+                        className="text-sm"
+                      />
+                      <DatePicker
+                        value={dateRangeEnd}
+                        onChange={(value) => setDateRangeEnd(value)}
+                        placeholder="End date"
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setDateFilterMode(tempDateMode);
+                        if (tempDateMode === 'single') {
+                          // Use the current dateFilter value from the input
+                          if (!dateFilter) {
+                            setDateFilter(format(new Date(), 'yyyy-MM-dd'));
+                          }
+                        } else if (tempDateMode === 'range') {
+                          // Use the current dateRangeStart and dateRangeEnd values from the inputs
+                          if (!dateRangeStart) setDateRangeStart(format(new Date(), 'yyyy-MM-dd'));
+                          if (!dateRangeEnd) setDateRangeEnd(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+                        }
+                        setShowDatePicker(false);
+                      }}
+                      className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDateFilterMode('none');
+                        setDateFilter('');
+                        setDateRangeStart('');
+                        setDateRangeEnd('');
+                        setShowDatePicker(false);
+                      }}
+                      className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -473,6 +693,31 @@ function EventsContent() {
               <div className="space-y-4">
                 <h3 className="font-medium text-foreground">Filters</h3>
                 
+                {/* Food/Drink Filter */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['food', 'drink'] as const).map((type) => {
+                      const isSelected = selectedFoodDrinkFilter.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => toggleFoodDrinkFilter(type)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
+                            isSelected
+                              ? type === 'food' 
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-blue-500 text-white'
+                              : 'bg-card text-foreground hover:bg-muted border border-border'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Free Only */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -544,7 +789,7 @@ function EventsContent() {
                           {eventsForDate.length > 0 ? (
                             <div className="grid grid-cols-2 gap-4">
                               {eventsForDate.map((event) => (
-                                <EventCard key={event.id} event={event} />
+                                <EventCard key={event.id} event={event} onLike={() => setShowToast(true)} />
                               ))}
                             </div>
                           ) : (
@@ -564,41 +809,82 @@ function EventsContent() {
                           </h4>
                           {dealsForDate.length > 0 ? (
             <div className="space-y-3">
-                              {dealsForDate.map((deal) => (
-                                <Link
-                                  key={deal.id}
-                                  href={`/events/${deal.id}`}
-                                  className="group flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md"
-                                >
-                                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                                    {deal.imageUrl ? (
-                                      <img
-                                        src={deal.imageUrl}
-                                        alt={deal.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                                        <Utensils size={18} className="text-primary" />
+                              {dealsForDate.map((deal) => {
+                                const liked = isLiked(deal.id);
+                                const likeCount = getLikeCount(deal.id);
+                                const handleLikeClick = (e: React.MouseEvent) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!user) {
+                                    router.push('/login');
+                                    return;
+                                  }
+                                  const wasLiked = liked;
+                                  toggleLike(deal.id);
+                                  // Show toast when liking (not unliking)
+                                  if (!wasLiked) {
+                                    setShowToast(true);
+                                  }
+                                };
+                                return (
+                                  <div
+                                    key={deal.id}
+                                    className="group relative flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md"
+                                  >
+                                    <Link
+                                      href={`/events/${deal.id}`}
+                                      className="flex items-center gap-3 flex-1 min-w-0"
+                                    >
+                                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                        {deal.imageUrl ? (
+                                          <img
+                                            src={deal.imageUrl}
+                                            alt={deal.title}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                                            <Utensils size={18} className="text-primary" />
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
+                                      <div className="flex-1 min-w-0">
+                                        <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-base">
+                                          {deal.title}
+                                        </h5>
+                                        <p className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
+                                          <MapPin size={12} />
+                                          {deal.venue.name}
+                                        </p>
+                                        {deal.price && (
+                                          <p className="text-primary font-medium text-sm mt-1">
+                                            {deal.price}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </Link>
+                                    <button
+                                      onClick={handleLikeClick}
+                                      className={`flex items-center gap-1 p-2 rounded-full transition-all flex-shrink-0 ${
+                                        liked 
+                                          ? 'text-red-500' 
+                                          : 'text-muted-foreground hover:text-red-500'
+                                      }`}
+                                      title={user ? (liked ? 'Unlike' : 'Like') : 'Sign in to like'}
+                                    >
+                                      <Heart 
+                                        size={18} 
+                                        className={liked ? 'fill-current' : ''} 
+                                      />
+                                      {likeCount > 0 && (
+                                        <span className="text-sm font-medium">
+                                          {likeCount}
+                                        </span>
+                                      )}
+                                    </button>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-base">
-                                      {deal.title}
-                                    </h5>
-                                    <p className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
-                                      <MapPin size={12} />
-                                      {deal.venue.name}
-                                    </p>
-                                    {deal.price && (
-                                      <p className="text-primary font-medium text-sm mt-1">
-                                        {deal.price}
-                                      </p>
-                                    )}
-                                  </div>
-                                </Link>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-center py-6 bg-muted rounded-xl">
@@ -823,7 +1109,7 @@ function EventsContent() {
                       {/* Events Grid for this date */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                         {events.map((event) => (
-                          <EventCard key={event.id} event={event} />
+                          <EventCard key={event.id} event={event} onLike={() => setShowToast(true)} />
                   ))}
                 </div>
                     </div>
@@ -860,6 +1146,31 @@ function EventsContent() {
               {/* Filters Section */}
               <div className="space-y-4">
                 <h3 className="font-medium text-foreground">Filters</h3>
+                
+                {/* Food/Drink Filter */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['food', 'drink'] as const).map((type) => {
+                      const isSelected = selectedFoodDrinkFilter.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => toggleFoodDrinkFilter(type)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
+                            isSelected
+                              ? type === 'food' 
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-blue-500 text-white'
+                              : 'bg-card text-foreground hover:bg-muted border border-border'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 
                 {/* Free Only */}
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -902,19 +1213,19 @@ function EventsContent() {
                         onChange={(e) => setMaxPrice(parseInt(e.target.value, 10))}
                         className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
-            )}
-          </div>
-        )}
+                    )}
+                  </div>
+                )}
 
                 {/* Clear Filters */}
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
                     className="w-full px-4 py-2 text-sm text-primary border border-primary rounded-lg hover:bg-primary/5 transition-colors"
-              >
+                  >
                     Clear All Filters
-              </button>
-            )}
+                  </button>
+                )}
               </div>
             </div>
           </aside>
@@ -1009,13 +1320,33 @@ function EventsContent() {
 
                             {/* Specials List */}
                             <div className="p-4 space-y-3">
-                              {deals.map((deal) => (
-                                <Link
-                                  key={deal.id}
-                                  href={`/events/${deal.id}`}
-                                  className="group flex gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-all"
-                                >
-                                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                              {deals.map((deal) => {
+                                const liked = isLiked(deal.id);
+                                const likeCount = getLikeCount(deal.id);
+                                const handleLikeClick = (e: React.MouseEvent) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!user) {
+                                    router.push('/login');
+                                    return;
+                                  }
+                                  const wasLiked = liked;
+                                  toggleLike(deal.id);
+                                  // Show toast when liking (not unliking)
+                                  if (!wasLiked) {
+                                    setShowToast(true);
+                                  }
+                                };
+                                return (
+                                  <div
+                                    key={deal.id}
+                                    className="group relative flex items-center gap-3 p-2 rounded-xl bg-muted/50 hover:bg-muted transition-all"
+                                  >
+                                    <Link
+                                      href={`/events/${deal.id}`}
+                                      className="flex items-center gap-3 flex-1 min-w-0"
+                                    >
+                                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                                         {deal.imageUrl ? (
                                           <img
                                             src={deal.imageUrl}
@@ -1024,34 +1355,57 @@ function EventsContent() {
                                           />
                                         ) : (
                                           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                                            <Utensils size={20} className="text-primary" />
+                                            <Utensils size={18} className="text-primary" />
                                           </div>
                                         )}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                                        <h5 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1 text-base">
                                           {deal.title}
                                         </h5>
-                                        {deal.description && (
-                                          <p className="text-muted-foreground text-xs line-clamp-1 mt-0.5">
-                                            {deal.description}
-                                          </p>
-                                        )}
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                          {deal.price && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-xs">
-                                              {deal.price}
+                                        <div className="mt-1 min-h-[1.5rem]">
+                                          <div className="flex items-center gap-2 opacity-100 group-hover:opacity-0 group-hover:hidden transition-opacity duration-200">
+                                            {deal.price && (
+                                              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                                                {deal.price}
+                                              </span>
+                                            )}
+                                            <span className="text-muted-foreground text-sm flex items-center gap-1.5">
+                                              <Clock size={14} />
+                                              {format(parseISO(`2000-01-01T${deal.startTime}`), 'h:mm a')}
+                                              {deal.endTime && ` - ${format(parseISO(`2000-01-01T${deal.endTime}`), 'h:mm a')}`}
                                             </span>
+                                          </div>
+                                          {deal.description && (
+                                            <p className="text-muted-foreground text-sm line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden group-hover:block">
+                                              {deal.description}
+                                            </p>
                                           )}
-                                          <span className="text-muted-foreground text-xs flex items-center gap-1">
-                                            <Clock size={10} />
-                                            {format(parseISO(`2000-01-01T${deal.startTime}`), 'h:mm a')}
-                                            {deal.endTime && ` - ${format(parseISO(`2000-01-01T${deal.endTime}`), 'h:mm a')}`}
-                                          </span>
                                         </div>
                                       </div>
                                     </Link>
-                              ))}
+                                    <button
+                                      onClick={handleLikeClick}
+                                      className={`flex items-center gap-1 p-1.5 rounded-full transition-all flex-shrink-0 ${
+                                        liked 
+                                          ? 'text-red-500' 
+                                          : 'text-muted-foreground hover:text-red-500'
+                                      }`}
+                                      title={user ? (liked ? 'Unlike' : 'Like') : 'Sign in to like'}
+                                    >
+                                      <Heart 
+                                        size={16} 
+                                        className={liked ? 'fill-current' : ''} 
+                                      />
+                                      {likeCount > 0 && (
+                                        <span className="text-xs font-medium">
+                                          {likeCount}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -1080,6 +1434,14 @@ function EventsContent() {
         </div>
       </div>
       )}
+
+      {/* Toast notification */}
+      <Toast
+        isOpen={showToast}
+        message="Saved to My Events"
+        type="success"
+        onClose={() => setShowToast(false)}
+      />
     </>
   );
 }

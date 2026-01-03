@@ -6,8 +6,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
-  ArrowRight,
-  Utensils
+  ArrowRight
 } from 'lucide-react';
 import { 
   format, 
@@ -32,6 +31,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(browseCategories);
+  const [expandedEvents, setExpandedEvents] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -44,14 +44,17 @@ export default function CalendarPage() {
     ? getEventsByDate(format(selectedDate, 'yyyy-MM-dd'))
     : [];
 
-  // Separate events from food & drink specials
-  const eventsOnly = selectedDateEvents.filter(e => !e.categories.includes('food-deal'));
-  const specialsOnly = selectedDateEvents.filter(e => e.categories.includes('food-deal'));
+  // Filter events by selected categories and exclude food & drink specials
+  const eventsOnly = selectedDateEvents.filter(e => 
+    !e.categories.includes('food-deal') &&
+    e.categories.some(cat => selectedCategories.includes(cat))
+  );
 
   const getEventsForDay = (date: Date) => {
     const events = getEventsByDate(format(date, 'yyyy-MM-dd'));
-    // Filter by selected categories
+    // Filter by selected categories and exclude food & drink specials
     return events.filter(event => 
+      !event.categories.includes('food-deal') &&
       event.categories.some(cat => selectedCategories.includes(cat))
     );
   };
@@ -93,7 +96,7 @@ export default function CalendarPage() {
               {/* Legend at Top - Filterable categories */}
               <div className="mb-6 pb-4 border-b border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm text-muted-foreground">Filter Event Categories</p>
+                  <p className="text-base font-medium text-foreground">Filter Event Categories</p>
                   <button
                     onClick={() => {
                       setSelectedCategories(
@@ -102,7 +105,7 @@ export default function CalendarPage() {
                           : browseCategories
                       );
                     }}
-                    className="text-xs text-primary hover:underline"
+                    className="text-sm text-primary hover:underline font-medium"
                   >
                     {selectedCategories.length === browseCategories.length ? 'Deselect All' : 'Select All'}
                   </button>
@@ -121,7 +124,7 @@ export default function CalendarPage() {
                         }`}
                       >
                         <div className={`w-2.5 h-2.5 rounded-full ${categoryColors[category]}`} />
-                        <span className={`text-xs ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <span className={`text-sm ${isSelected ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                           {categoryLabels[category]}
                         </span>
                       </button>
@@ -231,44 +234,35 @@ export default function CalendarPage() {
 
                 {selectedDate && (
                   <>
-                    {selectedDateEvents.length > 0 ? (
-                      <div className="space-y-6">
+                    {eventsOnly.length > 0 ? (
+                      <div className="space-y-4">
                         {/* Events Section */}
-                        {eventsOnly.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
-                              <CalendarIcon size={16} className="text-primary" />
-                              <h4 className="font-medium text-foreground text-sm">
-                                Events ({eventsOnly.length})
-                              </h4>
-                            </div>
-                            <div className="space-y-3">
-                              {eventsOnly.map((event) => (
-                                <EventCard key={event.id} event={event} variant="compact" />
-                              ))}
-                            </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                            <CalendarIcon size={18} className="text-primary" />
+                            <h4 className="font-medium text-foreground text-base">
+                              Events ({eventsOnly.length})
+                            </h4>
                           </div>
-                        )}
-
-                        {/* Food & Drink Specials Section */}
-                        {specialsOnly.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
-                              <Utensils size={16} className="text-primary" />
-                              <h4 className="font-medium text-foreground text-sm">
-                                Food & Drink Specials ({specialsOnly.length})
-                              </h4>
-                            </div>
-                            <div className="space-y-3">
-                              {specialsOnly.map((event) => (
-                                <EventCard key={event.id} event={event} variant="compact" />
-                              ))}
-                            </div>
+                          <div className="space-y-3">
+                            {(expandedEvents ? eventsOnly : eventsOnly.slice(0, 10)).map((event) => (
+                              <EventCard key={event.id} event={event} variant="compact" />
+                            ))}
                           </div>
-                        )}
+                          {eventsOnly.length > 10 && (
+                            <button
+                              onClick={() => setExpandedEvents(!expandedEvents)}
+                              className="mt-3 w-full py-2 text-sm text-primary hover:underline font-medium"
+                            >
+                              {expandedEvents 
+                                ? `Show Less (showing all ${eventsOnly.length})` 
+                                : `Show More (${eventsOnly.length - 10} more)`}
+                            </button>
+                          )}
+                        </div>
                         
                         <Link
-                          href={`/events?tab=all&date=${format(selectedDate, 'yyyy-MM-dd')}`}
+                          href={`/events?tab=events&date=${format(selectedDate, 'yyyy-MM-dd')}`}
                           className="flex items-center justify-center gap-2 w-full py-2 text-sm text-primary hover:underline"
                         >
                           See all

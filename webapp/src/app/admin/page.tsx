@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Shield, 
@@ -359,6 +359,27 @@ export default function AdminPage() {
     }
   }, [isAdmin, refreshPendingEvents, fetchPendingVenues, fetchPublishedVenues]);
 
+  // Filter pending events to only show parent events (where parentEventId is null)
+  // and count child events for each parent
+  // NOTE: This must be before any early returns to comply with Rules of Hooks
+  const groupedPendingEvents = useMemo(() => {
+    // Only show parent events (events without a parentEventId)
+    const parentEvents = pendingEvents.filter(event => !event.parentEventId);
+    
+    // For each parent event, count how many child events it has
+    return parentEvents.map(parentEvent => {
+      const childCount = pendingEvents.filter(
+        event => event.parentEventId === parentEvent.id
+      ).length;
+      
+      return {
+        ...parentEvent,
+        childCount,
+        totalInstances: childCount + 1, // parent + children
+      };
+    });
+  }, [pendingEvents]);
+
   if (authLoading || eventsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -377,16 +398,16 @@ export default function AdminPage() {
   };
 
   // Double-click to approve: first click shows confirmation state, second click approves
-  const handleApproveClick = async (eventId: string, parentEventId?: string) => {
+  const handleApproveClick = async (eventId: string, isRecurringParent?: boolean) => {
     if (clickedApproveId === eventId) {
       // Second click - actually approve
       setProcessingEventId(eventId);
       setClickedApproveId(null);
       
       // If this is a recurring event parent, approve all related events
-      if (parentEventId) {
+      if (isRecurringParent) {
         try {
-          const res = await fetch(`/api/events/approve-recurring/${parentEventId}`, { method: 'POST' });
+          const res = await fetch(`/api/events/approve-recurring/${eventId}`, { method: 'POST' });
           if (res.ok) {
             const data = await res.json();
             showToast(`Approved ${data.count} recurring events`, 'success');
@@ -411,22 +432,22 @@ export default function AdminPage() {
   };
 
   // Double-click to reject
-  const handleRejectClick = async (eventId: string, parentEventId?: string) => {
+  const handleRejectClick = async (eventId: string, isRecurringParent?: boolean) => {
     if (clickedRejectId === eventId) {
       // Second click - show modal for destructive action
       setModal({
         isOpen: true,
         title: 'Reject Event',
-        message: parentEventId 
+        message: isRecurringParent 
           ? 'This will reject ALL instances of this recurring event. This action cannot be undone.'
           : 'This event will be permanently deleted. This action cannot be undone.',
         type: 'warning',
         confirmText: 'Reject',
         onConfirm: async () => {
           setProcessingEventId(eventId);
-          if (parentEventId) {
+          if (isRecurringParent) {
             try {
-              const res = await fetch(`/api/events/reject-recurring/${parentEventId}`, { method: 'POST' });
+              const res = await fetch(`/api/events/reject-recurring/${eventId}`, { method: 'POST' });
               if (res.ok) {
                 const data = await res.json();
                 showToast(`Rejected ${data.count} recurring events`, 'info');
@@ -662,7 +683,7 @@ export default function AdminPage() {
                 <AlertTriangle size={24} className="text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-display text-foreground">{pendingEvents.length}</p>
+                <p className="text-2xl font-display text-foreground">{groupedPendingEvents.length}</p>
                 <p className="text-sm text-muted-foreground">Pending Events</p>
               </div>
             </div>
@@ -713,9 +734,9 @@ export default function AdminPage() {
             }`}
           >
             Pending & Published
-            {(pendingEvents.length > 0 || pendingVenues.length > 0) && (
+            {(groupedPendingEvents.length > 0 || pendingVenues.length > 0) && (
               <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-500 text-white">
-                {pendingEvents.length + pendingVenues.length}
+                {groupedPendingEvents.length + pendingVenues.length}
               </span>
             )}
             {activeSubTab === 'pending-published' && (
@@ -747,7 +768,7 @@ export default function AdminPage() {
                 Pending Event Submissions
               </h2>
 
-              {pendingEvents.length === 0 ? (
+              {groupedPendingEvents.length === 0 ? (
                 <div className="bg-card border border-border rounded-xl p-8 text-center">
                   <Check size={48} className="mx-auto text-green-500 mb-4" />
                   <h3 className="font-display text-xl text-foreground mb-2">All Caught Up!</h3>
@@ -755,7 +776,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {pendingEvents.map((event) => (
+                  {groupedPendingEvents.map((event) => (
                     <div
                       key={event.id}
                       className="bg-card border border-border rounded-xl overflow-hidden"
@@ -790,9 +811,17 @@ export default function AdminPage() {
                               ))}
                             </div>
                             
-                            <h3 className="font-display text-xl text-foreground mb-2">
-                              {event.title}
-                            </h3>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-display text-xl text-foreground">
+                                {event.title}
+                              </h3>
+                              {event.isRecurring && event.totalInstances > 1 && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                  <Repeat size={12} />
+                                  {event.totalInstances} instances
+                                </span>
+                              )}
+                            </div>
                             
                             <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
                               {event.description}
@@ -823,7 +852,7 @@ export default function AdminPage() {
                           {/* Actions */}
                           <div className="flex lg:flex-col gap-2 flex-shrink-0">
                             <button
-                              onClick={() => handleApproveClick(event.id, event.parentEventId)}
+                              onClick={() => handleApproveClick(event.id, event.isRecurring && event.totalInstances > 1)}
                               disabled={processingEventId === event.id}
                               className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                                 clickedApproveId === event.id
@@ -836,10 +865,10 @@ export default function AdminPage() {
                               ) : (
                                 <Check size={18} />
                               )}
-                              {clickedApproveId === event.id ? 'Click to confirm' : (event.parentEventId ? 'Approve All' : 'Approve')}
+                              {clickedApproveId === event.id ? 'Click to confirm' : (event.isRecurring && event.totalInstances > 1 ? `Approve All (${event.totalInstances})` : 'Approve')}
                             </button>
                             <button
-                              onClick={() => handleRejectClick(event.id, event.parentEventId)}
+                              onClick={() => handleRejectClick(event.id, event.isRecurring && event.totalInstances > 1)}
                               disabled={processingEventId === event.id}
                               className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                                 clickedRejectId === event.id
@@ -848,7 +877,7 @@ export default function AdminPage() {
                               } disabled:opacity-50`}
                             >
                               <X size={18} />
-                              {clickedRejectId === event.id ? 'Click to confirm' : 'Reject'}
+                              {clickedRejectId === event.id ? 'Click to confirm' : (event.isRecurring && event.totalInstances > 1 ? `Reject All (${event.totalInstances})` : 'Reject')}
                             </button>
                           </div>
                         </div>

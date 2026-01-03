@@ -2,20 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
-// GET /api/likes - Get current user's liked event IDs
+// GET /api/likes - Get current user's liked event IDs and like counts for all events
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ likes: [], likeCounts: {} });
-    }
-
-    const likes = await prisma.like.findMany({
-      where: { userId: user.id },
-      select: { eventId: true },
-    });
-
-    // Also get like counts for all events
+    
+    // Get like counts for all events (visible to everyone)
     const likeCounts = await prisma.like.groupBy({
       by: ['eventId'],
       _count: { eventId: true },
@@ -24,6 +16,16 @@ export async function GET() {
     const likeCountMap: Record<string, number> = {};
     likeCounts.forEach((lc) => {
       likeCountMap[lc.eventId] = lc._count.eventId;
+    });
+
+    // Only get user's liked event IDs if they're logged in
+    if (!user) {
+      return NextResponse.json({ likes: [], likeCounts: likeCountMap });
+    }
+
+    const likes = await prisma.like.findMany({
+      where: { userId: user.id },
+      select: { eventId: true },
     });
 
     return NextResponse.json({

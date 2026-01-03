@@ -1,7 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Mail, Heart } from 'lucide-react';
+import Modal from '@/components/Modal';
 
 export default function Footer() {
+  const [showContactModal, setShowContactModal] = useState(false);
   const currentYear = new Date().getFullYear();
 
   return (
@@ -86,10 +91,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:marketing@ygkhospitalitygroup.ca" className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1">
+                <button 
+                  onClick={() => setShowContactModal(true)}
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1"
+                >
                   <Mail size={14} />
                   Contact
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -100,12 +108,31 @@ export default function Footer() {
           <p className="text-sm text-muted-foreground">
             © {currentYear} Kingston Happenings. All rights reserved.
           </p>
-          <p className="text-sm text-muted-foreground text-center sm:text-right">
-            Built for Kingston, Ontario<br />
-            <span className="text-xs">Supporting local events, venues & creators</span>
-          </p>
+          <div className="text-sm text-muted-foreground text-center sm:text-right">
+            <p>Built for Kingston, Ontario</p>
+            <p className="text-xs">Supporting local events, venues & creators</p>
+            <p className="text-xs mt-2">
+              Having issues with the website?{' '}
+              <button 
+                onClick={() => setShowContactModal(true)}
+                className="text-primary hover:underline"
+              >
+                Contact us
+              </button>
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      <Modal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        title="Contact Us"
+        message="Please email us at kingstonhappenings.ca@gmail.com"
+        type="alert"
+        confirmText="OK"
+      />
     </footer>
   );
 }

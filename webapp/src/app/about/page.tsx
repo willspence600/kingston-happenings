@@ -1,7 +1,13 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Heart, Users, MapPin, Calendar, Mail, ArrowRight, Star } from 'lucide-react';
+import Modal from '@/components/Modal';
 
 export default function AboutPage() {
+  const [showContactModal, setShowContactModal] = useState(false);
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -156,13 +162,13 @@ export default function AboutPage() {
               venue owner, or just curious, don&apos;t hesitate to reach out.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a
-                href="mailto:marketing@ygkhospitalitygroup.ca"
+                <button
+                onClick={() => setShowContactModal(true)}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary rounded-xl font-medium hover:bg-white/90 transition-colors"
               >
                 <Mail size={18} />
                 Contact Us
-              </a>
+              </button>
               <Link
                 href="/submit"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/20 rounded-xl font-medium hover:bg-white/20 transition-colors"
@@ -174,6 +180,16 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* Contact Modal */}
+      <Modal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        title="Contact Us"
+        message="Please email us at kingstonhappenings.ca@gmail.com"
+        type="alert"
+        confirmText="OK"
+      />
     </div>
   );
 }

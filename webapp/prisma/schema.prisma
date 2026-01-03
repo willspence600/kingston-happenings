@@ -24,7 +24,7 @@ model User {
 
   // Relations
   // Note: submittedEvents relation removed since we store Supabase UUIDs directly in submittedById
-  likes           Like[]
+  // Note: likes relation removed since we store Supabase UUIDs directly in Like.userId
 }
 
 model Venue {
@@ -91,7 +91,9 @@ model Like {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // userId stores Supabase user ID (UUID), not Prisma User ID (CUID)
+  // We store it as a plain string without foreign key constraint since Supabase users
+  // don't exist in the Prisma User table
   userId  String
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId String

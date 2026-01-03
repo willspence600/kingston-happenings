@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Menu, X, Calendar, Home, MapPin, Plus, Search, Info, User, LogOut, Shield, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,11 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   
-  const pendingCount = pendingEvents.length;
+  // Count only parent events (unique submissions), matching the admin page logic
+  const pendingCount = useMemo(() => {
+    // Only count parent events (events without a parentEventId)
+    return pendingEvents.filter(event => !event.parentEventId).length;
+  }, [pendingEvents]);
 
   const handleLogout = () => {
     logout();

@@ -11,6 +11,8 @@ export type EventCategory =
   | 'market'
   | 'nightlife'
   | 'food-deal'
+  | 'food'
+  | 'drink'
   | 'trivia'
   | 'festival'
   | 'family'
@@ -76,6 +78,8 @@ export const categoryLabels: Record<EventCategory, string> = {
   'market': 'Markets',
   'nightlife': 'Nightlife',
   'food-deal': 'Food & Drink Specials',
+  'food': 'Food',
+  'drink': 'Drink',
   'trivia': 'Trivia Nights',
   'festival': 'Festivals',
   'family': 'Family Friendly',
@@ -95,6 +99,8 @@ export const categoryColors: Record<EventCategory, string> = {
   'market': 'bg-cyan-500',
   'nightlife': 'bg-indigo-500',
   'food-deal': 'bg-yellow-500',
+  'food': 'bg-orange-500',
+  'drink': 'bg-blue-500',
   'trivia': 'bg-purple-500',
   'festival': 'bg-yellow-500',
   'family': 'bg-lime-500',
@@ -102,22 +108,24 @@ export const categoryColors: Record<EventCategory, string> = {
 };
 
 export const categoryColorsMuted: Record<EventCategory, string> = {
-  'live-music': 'bg-white text-foreground hover:bg-muted border border-border',
-  'activity-nights': 'bg-white text-foreground hover:bg-muted border border-border',
-  'daytime': 'bg-white text-foreground hover:bg-muted border border-border',
-  'sports': 'bg-white text-foreground hover:bg-muted border border-border',
-  'all-day': 'bg-white text-foreground hover:bg-muted border border-border',
-  '19plus': 'bg-white text-foreground hover:bg-muted border border-border',
-  'workshop': 'bg-white text-foreground hover:bg-muted border border-border',
-  'concert': 'bg-white text-foreground hover:bg-muted border border-border',
-  'theatre': 'bg-white text-foreground hover:bg-muted border border-border',
-  'market': 'bg-white text-foreground hover:bg-muted border border-border',
-  'nightlife': 'bg-white text-foreground hover:bg-muted border border-border',
-  'food-deal': 'bg-white text-foreground hover:bg-muted border border-border',
-  'trivia': 'bg-white text-foreground hover:bg-muted border border-border',
-  'festival': 'bg-white text-foreground hover:bg-muted border border-border',
-  'family': 'bg-white text-foreground hover:bg-muted border border-border',
-  'community': 'bg-white text-foreground hover:bg-muted border border-border',
+  'live-music': 'bg-card text-foreground hover:bg-muted border border-border',
+  'activity-nights': 'bg-card text-foreground hover:bg-muted border border-border',
+  'daytime': 'bg-card text-foreground hover:bg-muted border border-border',
+  'sports': 'bg-card text-foreground hover:bg-muted border border-border',
+  'all-day': 'bg-card text-foreground hover:bg-muted border border-border',
+  '19plus': 'bg-card text-foreground hover:bg-muted border border-border',
+  'workshop': 'bg-card text-foreground hover:bg-muted border border-border',
+  'concert': 'bg-card text-foreground hover:bg-muted border border-border',
+  'theatre': 'bg-card text-foreground hover:bg-muted border border-border',
+  'market': 'bg-card text-foreground hover:bg-muted border border-border',
+  'nightlife': 'bg-card text-foreground hover:bg-muted border border-border',
+  'food-deal': 'bg-card text-foreground hover:bg-muted border border-border',
+  'food': 'bg-card text-foreground hover:bg-muted border border-border',
+  'drink': 'bg-card text-foreground hover:bg-muted border border-border',
+  'trivia': 'bg-card text-foreground hover:bg-muted border border-border',
+  'festival': 'bg-card text-foreground hover:bg-muted border border-border',
+  'family': 'bg-card text-foreground hover:bg-muted border border-border',
+  'community': 'bg-card text-foreground hover:bg-muted border border-border',
 };
 
 export const categoryColorsActive: Record<EventCategory, string> = {
@@ -133,6 +141,8 @@ export const categoryColorsActive: Record<EventCategory, string> = {
   'market': 'bg-cyan-500 text-white',
   'nightlife': 'bg-indigo-500 text-white',
   'food-deal': 'bg-yellow-500 text-white',
+  'food': 'bg-orange-500 text-white',
+  'drink': 'bg-blue-500 text-white',
   'trivia': 'bg-purple-500 text-white',
   'festival': 'bg-yellow-500 text-white',
   'family': 'bg-lime-500 text-white',

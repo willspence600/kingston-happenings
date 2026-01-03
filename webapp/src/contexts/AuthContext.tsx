@@ -253,10 +253,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const emailVerified = !!data.user.email_confirmed_at || !!data.user.confirmed_at;
         if (!emailVerified) {
           return { success: false, error: 'Please verify your email address before signing in. Check your inbox for a verification email.' };
-        }
+      }
         console.log('[Auth] Login successful, loading profile...');
         await loadUserWithProfile(data.user);
-        return { success: true };
+      return { success: true };
       }
 
       return { success: false, error: 'Failed to sign in. Please try again.' };
@@ -309,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Check if email is verified - if not, don't set user (they need to verify first)
         const emailVerified = !!authData.user.email_confirmed_at || !!authData.user.confirmed_at;
-        
+
         if (emailVerified) {
           setUser(buildUser(authData.user, profile));
           return { success: true };

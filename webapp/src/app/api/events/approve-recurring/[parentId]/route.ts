@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import prisma from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ parentId: string }> }
 ) {
   try {
-    const { parentId } = await params;
-    
-    // Verify admin
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-
+    const user = await getCurrentUser();
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    const { parentId } = await params;
 
     // Update all events with this parentEventId OR this id
     const result = await prisma.event.updateMany({

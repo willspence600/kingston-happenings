@@ -140,6 +140,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     ]).finally(() => setIsLoading(false));
   }, [refreshEvents, refreshVenues, refreshLikes]);
 
+  // Refresh likes when user changes (login/logout)
+  useEffect(() => {
+    if (!authLoading) {
+      refreshLikes();
+    }
+  }, [user, authLoading, refreshLikes]);
+
   // Fetch pending events when admin is detected and auth is done loading
   useEffect(() => {
     if (!authLoading && isAdmin) {
@@ -157,12 +164,20 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
+        // Update state immediately for responsive UI
         if (data.liked) {
-          setUserLikes(prev => [...prev, eventId]);
+          setUserLikes(prev => {
+            // Prevent duplicates
+            if (prev.includes(eventId)) return prev;
+            return [...prev, eventId];
+          });
         } else {
           setUserLikes(prev => prev.filter(id => id !== eventId));
         }
         setLikeCounts(prev => ({ ...prev, [eventId]: data.likeCount }));
+        
+        // Refresh likes from server to ensure consistency
+        await refreshLikes();
       }
     } catch (error) {
       console.error('Failed to toggle like:', error);

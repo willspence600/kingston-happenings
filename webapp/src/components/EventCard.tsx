@@ -11,9 +11,10 @@ import { useRouter } from 'next/navigation';
 interface EventCardProps {
   event: Event;
   variant?: 'default' | 'featured' | 'compact';
+  onLike?: () => void; // Optional callback when item is liked
 }
 
-export default function EventCard({ event, variant = 'default' }: EventCardProps) {
+export default function EventCard({ event, variant = 'default', onLike }: EventCardProps) {
   const { isLiked, toggleLike, getLikeCount } = useEvents();
   const { user } = useAuth();
   const router = useRouter();
@@ -31,17 +32,22 @@ export default function EventCard({ event, variant = 'default' }: EventCardProps
       router.push('/login');
       return;
     }
+    const wasLiked = liked;
     toggleLike(event.id);
+    // Call onLike callback if item was just liked (not unliked)
+    if (!wasLiked && onLike) {
+      onLike();
+    }
   };
 
   const LikeButton = ({ size = 'default' }: { size?: 'default' | 'small' }) => (
     <button
       onClick={handleLikeClick}
-      className={`flex items-center gap-1 rounded-full transition-all ${
+      className={`flex items-center gap-1 rounded-full transition-all relative z-10 ${
         liked 
           ? 'text-red-500' 
           : 'text-muted-foreground hover:text-red-500'
-      } ${size === 'small' ? 'p-1' : 'p-2 bg-white/80 backdrop-blur-sm hover:bg-white'}`}
+      } ${size === 'small' ? 'p-1' : 'p-2 bg-card/90 backdrop-blur-sm hover:bg-card border border-border/50'}`}
       title={user ? (liked ? 'Unlike' : 'Like') : 'Sign in to like'}
     >
       <Heart 
@@ -124,7 +130,7 @@ export default function EventCard({ event, variant = 'default' }: EventCardProps
                 ))}
               </div>
               {/* Like button */}
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 z-10">
                 <LikeButton />
               </div>
               {/* Featured badge */}
@@ -223,7 +229,7 @@ export default function EventCard({ event, variant = 'default' }: EventCardProps
               </div>
             )}
             {/* Like button */}
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-2 right-2 z-10">
               <LikeButton />
             </div>
             {/* Description overlay on hover */}

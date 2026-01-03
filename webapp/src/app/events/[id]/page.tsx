@@ -137,7 +137,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Back button */}
         <button
           onClick={() => router.back()}
-          className="absolute top-4 left-4 p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors"
+          className="absolute top-4 left-4 p-2 bg-card/90 backdrop-blur-sm rounded-lg hover:bg-card transition-colors border border-border/50"
         >
           <ArrowLeft size={20} className="text-foreground" />
         </button>
@@ -146,14 +146,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
             onClick={handleShare}
-            className="p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors"
+            className="p-2 bg-card/90 backdrop-blur-sm rounded-lg hover:bg-card transition-colors border border-border/50"
             title="Share"
           >
             <Share2 size={20} className="text-foreground" />
           </button>
           <button
             onClick={handleLike}
-            className={`p-2 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors flex items-center gap-1 ${
+            className={`p-2 bg-card/90 backdrop-blur-sm rounded-lg hover:bg-card transition-colors flex items-center gap-1 border border-border/50 ${
               liked ? 'text-red-500' : 'text-foreground'
             }`}
             title={user ? (liked ? 'Unlike' : 'Like') : 'Sign in to like'}
