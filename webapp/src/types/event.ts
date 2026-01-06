@@ -45,6 +45,10 @@ export interface Event {
   status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
   // Like count from API
   likeCount?: number;
+  // Submitter information (for pending events)
+  submittedById?: string;
+  submitterName?: string;
+  submitterRole?: 'user' | 'organizer' | 'admin';
 }
 
 export interface Venue {

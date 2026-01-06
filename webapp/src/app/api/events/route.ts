@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 // GET /api/events - Get all events (with filters)
 export async function GET(request: NextRequest) {
@@ -58,28 +59,72 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    // For pending events, fetch submitter information from Supabase profiles
+    let submitterMap: Record<string, { name: string; role: 'user' | 'organizer' | 'admin' }> = {};
+    if (status === 'pending') {
+      const submittedByIds = [...new Set(events.map(e => e.submittedById).filter(Boolean) as string[])];
+      
+      if (submittedByIds.length > 0) {
+        console.log('[API] Fetching profiles for submitter IDs:', submittedByIds);
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, name, role')
+          .in('id', submittedByIds);
+        
+        if (profilesError) {
+          console.error('[API] Error fetching profiles:', profilesError);
+        } else {
+          console.log('[API] Fetched profiles:', profiles);
+          if (profiles && profiles.length > 0) {
+            submitterMap = profiles.reduce((acc, profile) => {
+              acc[profile.id] = {
+                name: profile.name || 'Unknown User',
+                role: (profile.role as 'user' | 'organizer' | 'admin') || 'user',
+              };
+              return acc;
+            }, {} as Record<string, { name: string; role: 'user' | 'organizer' | 'admin' }>);
+            console.log('[API] Submitter map:', submitterMap);
+          }
+        }
+      }
+    }
+
     // Transform to match frontend format
-    const transformedEvents = events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      date: event.date,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      price: event.price,
-      ticketUrl: event.ticketUrl,
-      imageUrl: event.imageUrl,
-      featured: event.featured,
-      status: event.status,
-      venue: event.venue,
-      categories: event.categories.map((c) => c.name),
-      likeCount: event._count.likes,
-      isRecurring: event.isRecurring,
-      recurrencePattern: event.recurrencePattern,
-      recurrenceDay: event.recurrenceDay,
-      recurrenceEndDate: event.recurrenceEndDate,
-      parentEventId: event.parentEventId,
-    }));
+    const transformedEvents = events.map((event) => {
+      const baseEvent = {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        price: event.price,
+        ticketUrl: event.ticketUrl,
+        imageUrl: event.imageUrl,
+        featured: event.featured,
+        status: event.status,
+        venue: event.venue,
+        categories: event.categories.map((c) => c.name),
+        likeCount: event._count.likes,
+        isRecurring: event.isRecurring,
+        recurrencePattern: event.recurrencePattern,
+        recurrenceDay: event.recurrenceDay,
+        recurrenceEndDate: event.recurrenceEndDate,
+        parentEventId: event.parentEventId,
+        submittedById: event.submittedById || undefined,
+      };
+      
+      // Add submitter information for pending events
+      if (status === 'pending' && event.submittedById && submitterMap[event.submittedById]) {
+        return {
+          ...baseEvent,
+          submitterName: submitterMap[event.submittedById].name,
+          submitterRole: submitterMap[event.submittedById].role,
+        };
+      }
+      
+      return baseEvent;
+    });
 
     return NextResponse.json({ events: transformedEvents });
   } catch (error) {

@@ -842,6 +842,23 @@ export default function AdminPage() {
                               </span>
                             </div>
                             
+                            {(event.submitterName || event.submitterRole) && (
+                              <div className="mt-2 flex items-center gap-2 text-sm">
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Users size={14} />
+                                  Submitted by:
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {event.submitterName || 'Unknown User'}
+                                </span>
+                                {event.submitterRole && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground capitalize">
+                                    {event.submitterRole}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
                             {event.price && (
                               <p className="mt-2 text-sm font-medium text-primary">
                                 {event.price}

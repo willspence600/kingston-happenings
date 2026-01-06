@@ -215,9 +215,19 @@ export default function EventCard({ event, variant = 'default', onLike }: EventC
                 </span>
               </div>
             )}
+            {/* Description overlay on hover */}
+            {!isCancelled && (
+              <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end z-0 group-hover:scale-105 transition-transform duration-500">
+                <div className="w-full px-5 pb-4">
+                  <p className="text-white text-base line-clamp-4">
+                    {event.description}
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Category badges */}
             {!isCancelled && (
-              <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+              <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-10">
                 {event.categories.slice(0, 2).map((cat) => (
                   <span
                     key={cat}
@@ -232,14 +242,6 @@ export default function EventCard({ event, variant = 'default', onLike }: EventC
             <div className="absolute top-2 right-2 z-10">
               <LikeButton />
             </div>
-            {/* Description overlay on hover */}
-            {!isCancelled && (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                <p className="text-white text-xs line-clamp-3">
-                  {event.description}
-                </p>
-              </div>
-            )}
           </div>
           
           {/* Content */}
