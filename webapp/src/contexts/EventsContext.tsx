@@ -28,6 +28,7 @@ interface EventsContextType {
   getVenueById: (id: string) => Venue | undefined;
   refreshEvents: () => Promise<void>;
   refreshPendingEvents: () => Promise<void>;
+  refreshVenues: () => Promise<void>;
 }
 
 interface EventSubmission {
@@ -288,15 +289,82 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const getTodaysEvents = () => getEventsByDate(format(new Date(), 'yyyy-MM-dd'));
   
   const getFeaturedEvents = () => {
-    const featured = events.filter(e => e.featured && e.date >= format(new Date(), 'yyyy-MM-dd'));
-    return featured.sort((a, b) => {
-      const aPriority = getPromotionTierPriority(a.venue?.promotionTier);
-      const bPriority = getPromotionTierPriority(b.venue?.promotionTier);
-      if (bPriority !== aPriority) {
-        return bPriority - aPriority; // Higher priority first
+    try {
+      // Early return if no events
+      if (!events || events.length === 0) {
+        return [];
       }
-      return a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime);
-    });
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      
+      // Get upcoming events (today or future) that are not food deals and have a venue
+      const upcoming = events.filter(e => {
+        try {
+          return (
+            e &&
+            e.date &&
+            e.date >= today &&
+            e.categories &&
+            !e.categories.includes('food-deal') &&
+            e.venue &&
+            e.venue.id &&
+            e.startTime
+          );
+        } catch {
+          return false;
+        }
+      });
+      
+      // Sort by like count (highest first), then by venue promotion tier, then by date/time
+      const sorted = [...upcoming].sort((a, b) => {
+        try {
+          // Get like counts for comparison (use likeCount from event or from likeCounts state)
+          const aLikes = (a.likeCount ?? getLikeCount(a.id) ?? 0) || 0;
+          const bLikes = (b.likeCount ?? getLikeCount(b.id) ?? 0) || 0;
+          
+          // Primary sort: like count (highest first)
+          if (bLikes !== aLikes) {
+            return bLikes - aLikes;
+          }
+          
+          // Secondary sort: venue promotion tier (higher priority first)
+          const aPriority = getPromotionTierPriority(a.venue?.promotionTier);
+          const bPriority = getPromotionTierPriority(b.venue?.promotionTier);
+          if (bPriority !== aPriority) {
+            return bPriority - aPriority;
+          }
+          
+          // Tertiary sort: date and time (earliest first)
+          const dateCompare = (a.date || '').localeCompare(b.date || '');
+          if (dateCompare !== 0) return dateCompare;
+          return (a.startTime || '').localeCompare(b.startTime || '');
+        } catch (err) {
+          console.error('Error sorting featured events:', err);
+          // Return 0 to maintain order if there's an error
+          return 0;
+        }
+      });
+      
+      // Filter to only include one event per venue (take the first/highest liked event from each venue)
+      const venueIds = new Set<string>();
+      const featured: Event[] = [];
+      
+      for (const event of sorted) {
+        if (!event || !event.venue || !event.venue.id) continue;
+        
+        const venueId = event.venue.id;
+        if (!venueIds.has(venueId)) {
+          featured.push(event);
+          venueIds.add(venueId);
+        }
+      }
+      
+      return featured;
+    } catch (error) {
+      console.error('Error in getFeaturedEvents:', error);
+      // Return empty array on error to prevent breaking the page
+      return [];
+    }
   };
   
   const getUpcomingEvents = (limit?: number) => {
@@ -342,6 +410,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         getVenueById,
         refreshEvents,
         refreshPendingEvents,
+        refreshVenues,
       }}
     >
       {children}

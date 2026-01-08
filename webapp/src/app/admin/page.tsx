@@ -21,7 +21,9 @@ import {
   Edit,
   Upload,
   Image as ImageIcon,
-  Utensils
+  Utensils,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -302,7 +304,7 @@ function EditVenueForm({
 export default function AdminPage() {
   const router = useRouter();
   const { user, isAdmin, isLoading: authLoading } = useAuth();
-  const { pendingEvents, events, approveEvent, rejectEvent, refreshPendingEvents, refreshEvents, isLoading: eventsLoading } = useEvents();
+  const { pendingEvents, events, approveEvent, rejectEvent, refreshPendingEvents, refreshEvents, refreshVenues, isLoading: eventsLoading } = useEvents();
   const [pendingVenues, setPendingVenues] = useState<PendingVenue[]>([]);
   const [publishedVenues, setPublishedVenues] = useState<PublishedVenue[]>([]);
   const [loadingVenues, setLoadingVenues] = useState(false);
@@ -314,7 +316,9 @@ export default function AdminPage() {
   const [processingEventId, setProcessingEventId] = useState<string | null>(null);
   const [clickedApproveId, setClickedApproveId] = useState<string | null>(null);
   const [clickedRejectId, setClickedRejectId] = useState<string | null>(null);
-  const [showAllPublishedEvents, setShowAllPublishedEvents] = useState(false);
+  const [publishedEventsPage, setPublishedEventsPage] = useState(1);
+  const [publishedSpecialsPage, setPublishedSpecialsPage] = useState(1);
+  const itemsPerPage = 20;
   const [activeSubTab, setActiveSubTab] = useState<'pending-published' | 'venue-promotions'>('pending-published');
 
   const fetchPendingVenues = useCallback(async () => {
@@ -613,8 +617,8 @@ export default function AdminPage() {
       if (venueData.website && typeof venueData.website === 'string') {
         requestBody.website = venueData.website;
       }
-      // For imageUrl, only include if it's a valid URL (not a data URL preview)
-      if (venueData.imageUrl && typeof venueData.imageUrl === 'string' && !venueData.imageUrl.startsWith('data:')) {
+      // Include imageUrl if it exists (including data URLs from file uploads)
+      if (venueData.imageUrl && typeof venueData.imageUrl === 'string') {
         requestBody.imageUrl = venueData.imageUrl;
       }
       
@@ -630,6 +634,8 @@ export default function AdminPage() {
         showToast('Venue updated successfully', 'success');
         setEditingVenue(null);
         await fetchPublishedVenues();
+        // Refresh venues in EventsContext so venue tab shows updated image
+        await refreshVenues();
       } else {
         let errorMessage = 'Unknown error';
         try {
@@ -972,77 +978,97 @@ export default function AdminPage() {
                       <h3 className="font-display text-xl text-foreground mb-2">No Published Events</h3>
                       <p className="text-muted-foreground">Events will appear here once approved.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {(showAllPublishedEvents ? publishedEvents : publishedEvents.slice(0, 10)).map((event) => (
-                <div
-                  key={event.id}
-                  className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                      {event.imageUrl ? (
-                        <img
-                          src={event.imageUrl}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                          <Calendar size={16} className="text-muted-foreground" />
+                  ) : (() => {
+                    const totalPages = Math.ceil(publishedEvents.length / itemsPerPage);
+                    const startIndex = (publishedEventsPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const paginatedEvents = publishedEvents.slice(startIndex, endIndex);
+
+                    return (
+                      <>
+                        <div className="space-y-3">
+                          {paginatedEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                  {event.imageUrl ? (
+                                    <img
+                                      src={event.imageUrl}
+                                      alt={event.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+                                      <Calendar size={16} className="text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <h3 className="font-medium text-foreground truncate">{event.title}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {format(parseISO(event.date), 'MMM d, yyyy')} • {event.venue.name}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Link
+                                  href={`/events/${event.id}`}
+                                  className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                >
+                                  View
+                                </Link>
+                                <button
+                                  onClick={() => handleCancelEvent(event.id)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                >
+                                  <Ban size={14} />
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                  disabled={deletingEventId === event.id}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                  {deletingEventId === event.id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <Trash2 size={14} />
+                                  )}
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{event.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {format(parseISO(event.date), 'MMM d, yyyy')} • {event.venue.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Link
-                      href={`/events/${event.id}`}
-                      className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                    >
-                      View
-                    </Link>
-                    <button
-                      onClick={() => handleCancelEvent(event.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                    >
-                      <Ban size={14} />
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleDeleteEvent(event.id)}
-                      disabled={deletingEventId === event.id}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {deletingEventId === event.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                      Delete
-                    </button>
-                  </div>
-                      </div>
-                    ))}
-                    {publishedEvents.length > 10 && (
-                      <div className="text-center pt-4">
-                        <button
-                          onClick={() => setShowAllPublishedEvents(!showAllPublishedEvents)}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          {showAllPublishedEvents 
-                            ? `Show less (showing all ${publishedEvents.length} events)` 
-                            : `View all ${publishedEvents.length} events →`}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  );
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4 border-t border-border">
+                            <button
+                              onClick={() => setPublishedEventsPage(prev => Math.max(1, prev - 1))}
+                              disabled={publishedEventsPage === 1}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <ChevronLeft size={16} />
+                              Previous
+                            </button>
+                            <span className="text-sm text-muted-foreground">
+                              Page {publishedEventsPage} of {totalPages} ({publishedEvents.length} total)
+                            </span>
+                            <button
+                              onClick={() => setPublishedEventsPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={publishedEventsPage === totalPages}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })();
                 })()}
               </section>
 
@@ -1064,59 +1090,91 @@ export default function AdminPage() {
                       <h3 className="font-display text-xl text-foreground mb-2">No Published Specials</h3>
                       <p className="text-muted-foreground">Food & drink specials will appear here once approved.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {publishedSpecials.map((special) => (
-                        <div
-                          key={special.id}
-                          className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4"
-                        >
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                              {special.imageUrl ? (
-                                <img
-                                  src={special.imageUrl}
-                                  alt={special.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                                  <Utensils size={16} className="text-muted-foreground" />
+                  ) : (() => {
+                    const totalPages = Math.ceil(publishedSpecials.length / itemsPerPage);
+                    const startIndex = (publishedSpecialsPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const paginatedSpecials = publishedSpecials.slice(startIndex, endIndex);
+
+                    return (
+                      <>
+                        <div className="space-y-3">
+                          {paginatedSpecials.map((special) => (
+                            <div
+                              key={special.id}
+                              className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4"
+                            >
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                  {special.imageUrl ? (
+                                    <img
+                                      src={special.imageUrl}
+                                      alt={special.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+                                      <Utensils size={16} className="text-muted-foreground" />
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                                <div className="min-w-0">
+                                  <h3 className="font-medium text-foreground truncate">{special.title}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {format(parseISO(special.date), 'MMM d, yyyy')} • {special.venue.name}
+                                    {special.price && ` • ${special.price}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Link
+                                  href={`/events/${special.id}`}
+                                  className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                >
+                                  View
+                                </Link>
+                                <button
+                                  onClick={() => handleDeleteEvent(special.id)}
+                                  disabled={deletingEventId === special.id}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                  {deletingEventId === special.id ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    <Trash2 size={14} />
+                                  )}
+                                  Delete
+                                </button>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <h3 className="font-medium text-foreground truncate">{special.title}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {format(parseISO(special.date), 'MMM d, yyyy')} • {special.venue.name}
-                                {special.price && ` • ${special.price}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Link
-                              href={`/events/${special.id}`}
-                              className="px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                            >
-                              View
-                            </Link>
+                          ))}
+                        </div>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4 border-t border-border">
                             <button
-                              onClick={() => handleDeleteEvent(special.id)}
-                              disabled={deletingEventId === special.id}
-                              className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                              onClick={() => setPublishedSpecialsPage(prev => Math.max(1, prev - 1))}
+                              disabled={publishedSpecialsPage === 1}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {deletingEventId === special.id ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={14} />
-                              )}
-                              Delete
+                              <ChevronLeft size={16} />
+                              Previous
+                            </button>
+                            <span className="text-sm text-muted-foreground">
+                              Page {publishedSpecialsPage} of {totalPages} ({publishedSpecials.length} total)
+                            </span>
+                            <button
+                              onClick={() => setPublishedSpecialsPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={publishedSpecialsPage === totalPages}
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                              <ChevronRight size={16} />
                             </button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
+                        )}
+                      </>
+                    );
+                  })();
                 })()}
               </section>
             </div>

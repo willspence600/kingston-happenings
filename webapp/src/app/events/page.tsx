@@ -1282,23 +1282,15 @@ function EventsContent() {
                       <div className="columns-1 md:columns-2 gap-6">
                         {venueEntries.map(([venueName, deals]) => (
                           <div key={venueName} className="bg-card rounded-2xl border border-border overflow-hidden flex flex-col mb-6 break-inside-avoid">
-                            {/* Venue Header with Image */}
+                            {/* Venue Header with Ombre Banner (no venue image) */}
                             <div className="relative">
-                              {/* Venue Image Slot - defaults to homepage banner gradient */}
+                              {/* Gradient Banner - always show gradient, never show venue image */}
                               <div className="h-20 bg-muted overflow-hidden">
-                                {deals[0]?.venue.imageUrl ? (
-                                  <img
-                                    src={deals[0].venue.imageUrl}
-                                    alt={venueName}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-secondary via-secondary/95 to-primary/80 relative">
-                                    <div className="absolute inset-0 pattern-bg opacity-10" />
-                                    <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary/30 rounded-full blur-2xl" />
-                                    <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-accent/20 rounded-full blur-2xl" />
-                                  </div>
-                                )}
+                                <div className="w-full h-full bg-gradient-to-br from-secondary via-secondary/95 to-primary/80 relative">
+                                  <div className="absolute inset-0 pattern-bg opacity-10" />
+                                  <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary/30 rounded-full blur-2xl" />
+                                  <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-accent/20 rounded-full blur-2xl" />
+                                </div>
                               </div>
                               
                               {/* Venue Info Overlay */}
@@ -1316,7 +1308,7 @@ function EventsContent() {
                                   </p>
                                 )}
                               </div>
-          </div>
+                            </div>
 
                             {/* Specials List */}
                             <div className="p-4 space-y-3">
@@ -1372,8 +1364,10 @@ function EventsContent() {
                                             )}
                                             <span className="text-muted-foreground text-sm flex items-center gap-1.5">
                                               <Clock size={14} />
-                                              {format(parseISO(`2000-01-01T${deal.startTime}`), 'h:mm a')}
-                                              {deal.endTime && ` - ${format(parseISO(`2000-01-01T${deal.endTime}`), 'h:mm a')}`}
+                                              {(deal.isAllDay || deal.startTime === '00:00') 
+                                                ? 'All Day'
+                                                : `${format(parseISO(`2000-01-01T${deal.startTime}`), 'h:mm a')}${deal.endTime ? ` - ${format(parseISO(`2000-01-01T${deal.endTime}`), 'h:mm a')}` : ''}`
+                                              }
                                             </span>
                                           </div>
                                           {deal.description && (

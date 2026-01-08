@@ -61,8 +61,18 @@ export default function VenuesPage() {
                 className="group bg-card border border-border rounded-xl overflow-hidden card-hover"
               >
                 {/* Venue Image/Placeholder */}
-                <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
-                  <MapPin size={40} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
+                  {venue.imageUrl ? (
+                    <img
+                      src={venue.imageUrl}
+                      alt={venue.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <MapPin size={40} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="p-5">

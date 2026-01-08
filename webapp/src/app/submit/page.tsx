@@ -27,6 +27,7 @@ import { categoryLabels, EventCategory, browseCategories } from '@/types/event';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/contexts/EventsContext';
 import DatePicker from '@/components/DatePicker';
+import VenueSelector from '@/components/VenueSelector';
 import { addDays, parseISO, format } from 'date-fns';
 
 // Generate a unique ID (compatible with older browsers)
@@ -300,8 +301,13 @@ export default function SubmitEventPage() {
         return;
       }
 
-      if (!form.venueId && (!form.newVenueName || !form.newVenueAddress)) {
-        setError(`Please select a venue or enter new venue details for "${form.title || 'untitled event'}"`);
+      if (!form.venueId) {
+        setError(`Please select a venue or create a new one for "${form.title || 'untitled event'}"`);
+        return;
+      }
+
+      if (form.venueId === 'new' && (!form.newVenueName || !form.newVenueAddress)) {
+        setError(`Please provide both venue name and address for "${form.title || 'untitled event'}"`);
         return;
       }
 
@@ -372,8 +378,13 @@ export default function SubmitEventPage() {
           return;
         }
 
-        if (!form.venueId && (!form.newVenueName || !form.newVenueAddress)) {
-          setError(`Please select a venue or enter new venue details for "${form.title || 'untitled special'}"`);
+        if (!form.venueId) {
+          setError(`Please select a venue or create a new one for "${form.title || 'untitled special'}"`);
+          return;
+        }
+
+        if (form.venueId === 'new' && (!form.newVenueName || !form.newVenueAddress)) {
+          setError(`Please provide both venue name and address for "${form.title || 'untitled special'}"`);
           return;
         }
 
@@ -976,64 +987,17 @@ export default function SubmitEventPage() {
                   Location
                 </h3>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor={`venue-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                      Select a Venue *
-                    </label>
-                    <select
-                      id={`venue-${formData.id}`}
-                      value={formData.venueId}
-                      onChange={(e) => updateForm(formData.id, { venueId: e.target.value })}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    >
-                      <option value="">Choose an existing venue...</option>
-                      {venues.map((venue) => (
-                        <option key={venue.id} value={venue.id}>
-                          {venue.name} - {venue.neighborhood || venue.address}
-                        </option>
-                      ))}
-                      <option value="new">+ Add a new venue</option>
-                    </select>
-                  </div>
-
-                  {formData.venueId === 'new' && (
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-                        <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-700">
-                          New venues require admin approval before they appear in the venue list.
-                        </p>
-                      </div>
-                      <div>
-                        <label htmlFor={`newVenueName-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                          Venue Name *
-                        </label>
-                        <input
-                          type="text"
-                          id={`newVenueName-${formData.id}`}
-                          value={formData.newVenueName}
-                          onChange={(e) => updateForm(formData.id, { newVenueName: e.target.value })}
-                          placeholder="e.g., The Ale House"
-                          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor={`newVenueAddress-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                          Address *
-                        </label>
-                        <input
-                          type="text"
-                          id={`newVenueAddress-${formData.id}`}
-                          value={formData.newVenueAddress}
-                          onChange={(e) => updateForm(formData.id, { newVenueAddress: e.target.value })}
-                          placeholder="e.g., 393 Princess St, Kingston, ON"
-                          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <VenueSelector
+                  venues={venues}
+                  selectedVenueId={formData.venueId}
+                  newVenueName={formData.newVenueName}
+                  newVenueAddress={formData.newVenueAddress}
+                  onVenueSelect={(venueId) => updateForm(formData.id, { venueId })}
+                  onNewVenueNameChange={(name) => updateForm(formData.id, { newVenueName: name })}
+                  onNewVenueAddressChange={(address) => updateForm(formData.id, { newVenueAddress: address })}
+                  required
+                  id={`venue-${formData.id}`}
+                />
               </section>
 
               {/* Categories */}
@@ -1480,64 +1444,17 @@ export default function SubmitEventPage() {
                   Location
                 </h3>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor={`special-venue-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                      Select a Venue *
-                    </label>
-                    <select
-                      id={`special-venue-${formData.id}`}
-                      value={formData.venueId}
-                      onChange={(e) => updateSpecialForm(formData.id, { venueId: e.target.value })}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    >
-                      <option value="">Choose an existing venue...</option>
-                      {venues.map((venue) => (
-                        <option key={venue.id} value={venue.id}>
-                          {venue.name} - {venue.neighborhood || venue.address}
-                        </option>
-                      ))}
-                      <option value="new">+ Add a new venue</option>
-                    </select>
-                  </div>
-
-                  {formData.venueId === 'new' && (
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-                        <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-700">
-                          New venues require admin approval before they appear in the venue list.
-                        </p>
-                      </div>
-                      <div>
-                        <label htmlFor={`special-newVenueName-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                          Venue Name *
-                        </label>
-                        <input
-                          type="text"
-                          id={`special-newVenueName-${formData.id}`}
-                          value={formData.newVenueName}
-                          onChange={(e) => updateSpecialForm(formData.id, { newVenueName: e.target.value })}
-                          placeholder="e.g., The Ale House"
-                          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor={`special-newVenueAddress-${formData.id}`} className="block text-sm font-medium text-foreground mb-2">
-                          Address *
-                        </label>
-                        <input
-                          type="text"
-                          id={`special-newVenueAddress-${formData.id}`}
-                          value={formData.newVenueAddress}
-                          onChange={(e) => updateSpecialForm(formData.id, { newVenueAddress: e.target.value })}
-                          placeholder="e.g., 393 Princess St, Kingston, ON"
-                          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <VenueSelector
+                  venues={venues}
+                  selectedVenueId={formData.venueId}
+                  newVenueName={formData.newVenueName}
+                  newVenueAddress={formData.newVenueAddress}
+                  onVenueSelect={(venueId) => updateSpecialForm(formData.id, { venueId })}
+                  onNewVenueNameChange={(name) => updateSpecialForm(formData.id, { newVenueName: name })}
+                  onNewVenueAddressChange={(address) => updateSpecialForm(formData.id, { newVenueAddress: address })}
+                  required
+                  id={`special-venue-${formData.id}`}
+                />
               </section>
 
               {/* Categories */}
